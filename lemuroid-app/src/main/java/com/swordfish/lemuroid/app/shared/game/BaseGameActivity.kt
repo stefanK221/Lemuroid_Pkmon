@@ -207,6 +207,9 @@ abstract class BaseGameActivity : ImmersiveActivity() {
                                 }
                             },
                             onExitGame = {
+                                // mGBA ignores retro_cheat_set(enabled=false). Clear the
+                                // native cheat device before ending the game session.
+                                LibretroDroid.resetCheat()
                                 showCheatManager = false
                                 baseGameScreenViewModel.requestFinish()
                             },
