@@ -96,6 +96,29 @@ class SavePatcherTests(unittest.TestCase):
             with self.subTest(invalid=invalid), self.assertRaises(ValueError):
                 patch_six_v(make_save(), invalid)
 
+    def test_corrupted_party_checksum_rejected_without_edit(self):
+        original = make_save(party_count=6)
+        damaged = bytearray(original)
+        section = 57344 + 4096
+        pokemon = section + 0x238 + 100 * 3
+        damaged[pokemon + 28] ^= 1
+        write16(damaged, section + 0xFF6,
+                checksum(damaged[section:section + LENGTHS[1]]))
+        with self.assertRaises(ValueError):
+            patch_six_v(bytes(damaged), [1])
+
+    def test_bad_section_checksum_rejected(self):
+        damaged = bytearray(make_save(party_count=6))
+        damaged[57344 + 4096 + 0x238] ^= 1
+        with self.assertRaises(ValueError):
+            patch_six_v(bytes(damaged), [2])
+
+    def test_invalid_party_selection_for_six_members(self):
+        original = make_save(party_count=6)
+        for selection in ([0], [7], [-1], []):
+            with self.subTest(selection=selection), self.assertRaises(ValueError):
+                patch_six_v(original, selection)
+
     def test_bad_signature_rejected(self):
         raw = bytearray(make_save())
         raw[0xFF8:0xFFC] = b"FAIL"
