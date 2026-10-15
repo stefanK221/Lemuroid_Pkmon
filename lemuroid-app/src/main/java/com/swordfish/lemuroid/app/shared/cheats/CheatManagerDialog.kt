@@ -30,13 +30,27 @@ fun CheatManagerDialog(
     onDismiss: () -> Unit,
     onOpenSaveEditor: () -> Unit,
     onApplyCheat: (Int, Boolean, String) -> Unit,
+    onExitGame: () -> Unit,
 ) {
     var entries by remember(gameId) { mutableStateOf(store.read(gameId)) }
     var title by remember { mutableStateOf("") }
     var code by remember { mutableStateOf("") }
     var format by remember { mutableStateOf(CheatFormat.CODE_BREAKER) }
     var error by remember { mutableStateOf<String?>(null) }
+    var needsRestart by remember { mutableStateOf(false) }
+    var confirmExit by remember { mutableStateOf(false) }
 
+    if (confirmExit) {
+        AlertDialog(
+            onDismissRequest = { confirmExit = false },
+            title = { Text("退出游戏以彻底关闭金手指？") },
+            text = { Text("请先回到正常位置并在游戏内存档。退出后需要重新打开游戏，未保存的进度可能丢失。") },
+            confirmButton = {
+                TextButton(onClick = { confirmExit = false; onExitGame() }) { Text("确认退出") }
+            },
+            dismissButton = { TextButton(onClick = { confirmExit = false }) { Text("取消") } },
+        )
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("金手指管理（测试版）") },
@@ -68,7 +82,11 @@ fun CheatManagerDialog(
                     }
                 }
                 if (error != null) Text(error!!)
-                Text("启用时如发生错误，原因会显示在这里。")
+                if (needsRestart) {
+                    Text("⚠️ 已向核心发送关闭指令，但穿墙等内存效果可能持续。彻底关闭需要退出并重新进入游戏。")
+                    Button(onClick = { confirmExit = true }) { Text("退出游戏以彻底关闭（先存档）") }
+                }
+                Text("操作失败时，原因会显示在这里。")
                 Button(
                     onClick = {
                         runCatching {
@@ -91,6 +109,7 @@ fun CheatManagerDialog(
                                 runCatching {
                                     onApplyCheat(index, !item.enabled, item.code)
                                     store.setEnabled(gameId, item.id, !item.enabled)
+                                    if (item.enabled) needsRestart = true
                                     entries = store.read(gameId)
                                     error = null
                                 }.onFailure {
