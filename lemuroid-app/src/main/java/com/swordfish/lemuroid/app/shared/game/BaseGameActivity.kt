@@ -111,6 +111,12 @@ abstract class BaseGameActivity : ImmersiveActivity() {
         game = intent.getSerializableExtra(EXTRA_GAME) as Game
         systemCoreConfig = intent.getSerializableExtra(EXTRA_SYSTEM_CORE_CONFIG) as SystemCoreConfig
         system = GameSystem.findById(game.systemId)
+        if (game.systemId == "gba") {
+            val cheatStore = CheatStore(applicationContext)
+            cheatStore.read(game.id.toString()).filter { it.enabled }.forEach {
+                cheatStore.setEnabled(game.id.toString(), it.id, false)
+            }
+        }
 
         val viewModel by viewModels<BaseGameScreenViewModel> {
             BaseGameScreenViewModel.Factory(
