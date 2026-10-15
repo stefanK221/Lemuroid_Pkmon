@@ -1,5 +1,7 @@
 package com.swordfish.lemuroid.app.shared.cheats
 
+import java.security.SecureRandom
+
 /** Copy-on-write boxed gifts. Does not change the party, wallet, or existing box records. */
 object EmeraldQuickSavePatcher {
     data class Resources(val money: Long, val masterBalls: Int, val hasBallSpace: Boolean)
@@ -38,6 +40,44 @@ object EmeraldQuickSavePatcher {
         }
         permute(emptyList(), listOf(0,1,2,3))
     }
+    /** Generation III: nature = PID % 25; shiny when TID xor SID xor PID halves < 8. */
+    fun shinyFor(trainer: Long, personality: Long): Boolean {
+        require(trainer in 0..0xFFFFFFFFL && personality in 0..0xFFFFFFFFL)
+        val value = (trainer.toInt() and 0xFFFF) xor
+            ((trainer.toInt() ushr 16) and 0xFFFF) xor
+            (personality.toInt() and 0xFFFF) xor
+            ((personality.toInt() ushr 16) and 0xFFFF)
+        return value < 8
+    }
+
+    /** Generate a valid nature/shiny PID for the save owner's trainer ID; never edit existing team data. */
+    fun personalityFor(
+        input: ByteArray,
+        nature: Int?,
+        shiny: Boolean,
+        random: SecureRandom = SecureRandom(),
+    ): Long {
+        require(nature == null || nature in 0..24) { "性格编号必须在0～24范围" }
+        val trainer = u32(input, sections(input)[0] + 0xA)
+        repeat(10_000) {
+            val candidate = if (shiny) {
+                val high = random.nextInt(65536)
+                val target = random.nextInt(8)
+                val low = high xor (trainer.toInt() and 0xFFFF) xor
+                    ((trainer.toInt() ushr 16) and 0xFFFF) xor target
+                (high.toLong() shl 16) or low.toLong()
+            } else {
+                random.nextInt().toLong() and 0xFFFFFFFFL
+            }
+            if ((nature == null || candidate % 25 == nature.toLong()) &&
+                shinyFor(trainer, candidate) == shiny
+            ) {
+                return candidate
+            }
+        }
+        error("无法生成符合性格与闪光要求的精灵，请重试")
+    }
+
     fun addToFirstEmptyBox(input: ByteArray, species: Int, nickname: ByteArray, pp: Int, personality: Long): Gift {
         require(species in 1..251 || species in 277..411) { "不支持的精灵内部编号" }
         require(nickname.size == 11 && nickname[0] != 0xFF.toByte()) { "精灵名称读取失败" }
