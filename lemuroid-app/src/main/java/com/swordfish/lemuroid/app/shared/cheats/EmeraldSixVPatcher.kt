@@ -44,7 +44,8 @@ object EmeraldSixVPatcher {
     }
 
     /** Party positions are 1-based; an empty selection is rejected. */
-    fun apply(input: ByteArray, selectedPositions: Set<Int>): ByteArray {
+    fun apply(input: ByteArray, selectedPositions: Set<Int>, evPreset: List<Int>? = null): ByteArray {
+        require(evPreset == null || (evPreset.size == 6 && evPreset.all { it in 0..252 } && evPreset.sum() <= 510)) { "Invalid EV spread" }
         val original = EmeraldSaveInspector.inspect(input)
         require(selectedPositions.isNotEmpty())
         require(selectedPositions.all { it in 1..original.partyCount }) {
@@ -64,6 +65,10 @@ object EmeraldSixVPatcher {
             val plain = ByteArray(48)
             for (word in 0 until 12) {
                 put32(plain, word * 4, u32(output, start + 32 + word * 4) xor key)
+            }
+            if (evPreset != null) {
+                val effortBlock = permutations[(personality % 24).toInt()].indexOf(2)
+                for (stat in 0 until 6) plain[effortBlock * 12 + stat] = evPreset[stat].toByte()
             }
             val misc = permutations[(personality % 24).toInt()].indexOf(3)
             val ivOffset = misc * 12 + 4
@@ -85,6 +90,11 @@ object EmeraldSixVPatcher {
         for (position in 1..original.partyCount) {
             if (position !in selectedPositions) {
                 check(verified.partyIvs[position - 1] == original.partyIvs[position - 1])
+            }
+        }
+        if (evPreset != null) {
+            for (position in selectedPositions) {
+                check(verified.partyEvs[position - 1] == evPreset) { "EV verification failed" }
             }
         }
         return output
