@@ -113,13 +113,14 @@ fun QuickToolsDialog(
                 val speciesToDex = dexMap.entries.associate { it.value to it.key }
                 val number = search.trim().toIntOrNull()
                 val candidates = if (number != null) {
-                    listOfNotNull(dexMap[number]?.let { number to it })
+                    listOfNotNull(dexMap[number]?.takeIf { it in 1..251 || it in 277..411 }?.let { number to it })
                 } else {
                     QuickToolsProfile.namedSpecies.entries.filter { (_, name) ->
                         search.isBlank() || name.contains(search, ignoreCase = true)
-                    }.take(8).mapNotNull { (id, _) -> speciesToDex[id]?.let { it to id } }
+                    }.filter { (id, _) -> id in 1..251 || id in 277..411 }
+                        .take(8).mapNotNull { (id, _) -> speciesToDex[id]?.let { it to id } }
                 }
-                if (candidates.isEmpty()) Text("没有找到对应精灵，请检查编号或名称。")
+                if (candidates.isEmpty()) Text("没有可安全领取的对应精灵，请检查编号或名称；部分精灵尚未开放领取。")
                 candidates.forEach { (dex, species) ->
                     TextButton(onClick = { selected = species }) {
                         val label = QuickToolsProfile.namedSpecies[species] ?: "精灵"
@@ -180,6 +181,7 @@ fun QuickToolsDialog(
                     val selectedNature = nature
                     val selectedShiny = shiny
                     val selectedLevel = levelText.toIntOrNull()
+                    require(id in 1..251 || id in 277..411) { "此精灵尚未开放领取" }
                     val selectedIvs = requireNotNull(customIvs).toList()
                     val selectedEvs = requireNotNull(customEvs).toList()
                     confirmation = "将新增${QuickToolsProfile.namedSpecies[id] ?: "精灵"}（图鉴#${speciesToDex[id]}，Lv.${selectedLevel ?: "无效"}，IV:$selectedIvs，EV:$selectedEvs，性格：${selectedNature?.let { natureNames[it] } ?: "随机"}，${if (selectedShiny) "闪光" else "普通"}）到第一个空盒位。会先备份并重启游戏，未保存的进度会丢失。已在游戏内保存后再执行。"
