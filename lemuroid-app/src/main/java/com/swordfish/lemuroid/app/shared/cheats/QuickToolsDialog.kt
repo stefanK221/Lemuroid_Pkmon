@@ -39,12 +39,19 @@ fun QuickToolsDialog(
     var nature by remember { mutableStateOf<Int?>(null) }
     var shiny by remember { mutableStateOf(false) }
     var levelText by remember { mutableStateOf("1") }
+    var ivText by remember { mutableStateOf("31,31,31,31,31,31") }
+    var evText by remember { mutableStateOf("0,0,0,0,0,0") }
+    var dexMap by remember { mutableStateOf<Map<Int, Int>>(emptyMap()) }
     var natureMenuOpen by remember { mutableStateOf(false) }
     var confirmation by remember { mutableStateOf<String?>(null) }
     var action by remember { mutableStateOf<(() -> Unit)?>(null) }
     LaunchedEffect(fileName) {
         val result = withContext(Dispatchers.IO) { runCatching { QuickToolsProfile.verify(context, fileName) } }
-        result.onSuccess { profile = it; message = "已适配：漆黑的魅影 5.0EX+BW（精确版本校验通过）" }
+        result.onSuccess { verified ->
+            runCatching { verified.dexToSpecies() }
+                .onSuccess { dexMap = it; profile = verified; message = "ROM图鉴映射验证通过；请核对游戏中的图鉴显示。" }
+                .onFailure { profile = null; message = it.message ?: "ROM图鉴映射失败" }
+        }
             .onFailure { message = it.message ?: "无法识别此游戏" }
     }
     fun backup(raw: ByteArray, prefix: String) {
@@ -100,18 +107,26 @@ fun QuickToolsDialog(
                     runCatching { onSetFlags(0); flags = 0; message = "已停止金钱与大师球的持续补充。" }
                         .onFailure { message = "关闭失败：${it.message}" }
                 }) { Text("关闭两个持续功能") }
-                Text("获取指定精灵：加入电脑空盒位，不替换队伍。Lv.1、6V、招式撞击；不自动补图鉴记录。先在游戏内保存，执行后重启游戏。")
-                OutlinedTextField(value = search, onValueChange = { search = it }, label = { Text("搜索名称或内部编号") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-                val number = search.toIntOrNull()
-                val known = QuickToolsProfile.namedSpecies.filter { (id, name) -> search.isBlank() || name.contains(search) || id.toString() == search }
-                val candidates = if (number != null && (number in 1..251 || number in 277..411)) {
-                    listOf(number to (QuickToolsProfile.namedSpecies[number] ?: "精灵（内部编号 $number）"))
-                } else known.entries.take(8).map { it.key to it.value }
-                if (candidates.isEmpty()) Text("暂无此名称。可输入本版本内部编号：1–251、277–411（不是全国图鉴编号）。")
-                candidates.forEach { (id, name) ->
-                    TextButton(onClick = { selected = id }) { Text((if (selected == id) "✓ " else "") + "$name · $id") }
+                Text("获取指定精灵：加入电脑空盒位，不替换已有精灵；默认撞击，不自动补图鉴记录。先在游戏内保存。")
+                Text("按ROM图鉴序号检索（不是存档内部物种ID）。如游戏显示的编号不符，请停止并反馈。")
+                OutlinedTextField(value = search, onValueChange = { search = it }, label = { Text("搜索名称或ROM图鉴编号") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                val speciesToDex = dexMap.entries.associate { it.value to it.key }
+                val number = search.trim().toIntOrNull()
+                val candidates = if (number != null) {
+                    listOfNotNull(dexMap[number]?.let { number to it })
+                } else {
+                    QuickToolsProfile.namedSpecies.entries.filter { (_, name) ->
+                        search.isBlank() || name.contains(search, ignoreCase = true)
+                    }.take(8).mapNotNull { (id, _) -> speciesToDex[id]?.let { it to id } }
                 }
-                Text("已选：${QuickToolsProfile.namedSpecies[selected] ?: "内部编号 $selected"}")
+                if (candidates.isEmpty()) Text("没有找到对应精灵，请检查编号或名称。")
+                candidates.forEach { (dex, species) ->
+                    TextButton(onClick = { selected = species }) {
+                        val label = QuickToolsProfile.namedSpecies[species] ?: "精灵"
+                        Text((if (selected == species) "✓ " else "") + "$label · 图鉴#$dex")
+                    }
+                }
+                Text("已选：${QuickToolsProfile.namedSpecies[selected] ?: "精灵"} · 图鉴#${speciesToDex[selected] ?: "?"}")
                 OutlinedTextField(
                     value = levelText,
                     onValueChange = { levelText = it.filter { char -> char.isDigit() }.take(3) },
@@ -120,6 +135,18 @@ fun QuickToolsDialog(
                     singleLine = true,
                     isError = (levelText.toIntOrNull() ?: 0) !in 1..100,
                 )
+                Text("六项顺序：HP、攻击、防御、速度、特攻、特防；用逗号隔开")
+                fun parseStats(value: String, maximum: Int): List<Int>? {
+                    val parts = value.split(',', '，').map { it.trim().toIntOrNull() }
+                    if (parts.size != 6 || parts.any { it == null || it !in 0..maximum }) return null
+                    return parts.filterNotNull()
+                }
+                val customIvs = parseStats(ivText, 31)
+                val customEvs = parseStats(evText, 255)
+                val statsValid = customIvs != null && customEvs != null && customEvs.sum() <= 510
+                OutlinedTextField(value = ivText, onValueChange = { ivText = it.take(64) }, label = { Text("领取时IV（6项0～31）") }, modifier = Modifier.fillMaxWidth(), singleLine = true, isError = customIvs == null)
+                OutlinedTextField(value = evText, onValueChange = { evText = it.take(64) }, label = { Text("领取时EV（各0～255，总和≤510）") }, modifier = Modifier.fillMaxWidth(), singleLine = true, isError = customEvs == null || customEvs.sum() > 510)
+                if (!statsValid) Text("请检查IV/EV：均需6项，且EV总和不超过510")
                 Text("赠送精灵的性格与闪光（不修改已有队伍）")
                 val natureNames = listOf(
                     "勤奋", "怕寂寞", "勇敢", "固执", "顽皮",
@@ -148,19 +175,21 @@ fun QuickToolsDialog(
                 TextButton(onClick = { shiny = !shiny }) {
                     Text(if (shiny) "✓ 闪光精灵（点击改为普通）" else "普通精灵（点击设为闪光）")
                 }
-                Button(enabled = profile != null && (levelText.toIntOrNull() ?: 0) in 1..100, onClick = {
+                Button(enabled = profile != null && dexMap.isNotEmpty() && statsValid && (levelText.toIntOrNull() ?: 0) in 1..100, onClick = {
                     val id = selected
                     val selectedNature = nature
                     val selectedShiny = shiny
                     val selectedLevel = levelText.toIntOrNull()
-                    confirmation = "将新增${QuickToolsProfile.namedSpecies[id] ?: "内部编号 $id"}（Lv.${selectedLevel ?: "无效"}，性格：${selectedNature?.let { natureNames[it] } ?: "随机"}，${if (selectedShiny) "闪光" else "普通"}）到第一个空盒位。会先备份并重启游戏，未保存的进度会丢失。已在游戏内保存后再执行。"
+                    val selectedIvs = requireNotNull(customIvs).toList()
+                    val selectedEvs = requireNotNull(customEvs).toList()
+                    confirmation = "将新增${QuickToolsProfile.namedSpecies[id] ?: "精灵"}（图鉴#${speciesToDex[id]}，Lv.${selectedLevel ?: "无效"}，IV:$selectedIvs，EV:$selectedEvs，性格：${selectedNature?.let { natureNames[it] } ?: "随机"}，${if (selectedShiny) "闪光" else "普通"}）到第一个空盒位。会先备份并重启游戏，未保存的进度会丢失。已在游戏内保存后再执行。"
                     action = {
                         val verified = requireNotNull(profile)
                         require((selectedLevel ?: 0) in 1..100) { "请输入1～100的有效等级" }
                         val experience = PokemonExperience.forLevel(requireNotNull(selectedLevel), verified.growthRate(id))
                         val raw = onReadSave()
                         val pid = EmeraldQuickSavePatcher.personalityFor(raw, selectedNature, selectedShiny)
-                        val gift = EmeraldQuickSavePatcher.addToFirstEmptyBox(raw, id, verified.speciesName(id), verified.tacklePp(), pid, experience)
+                        val gift = EmeraldQuickSavePatcher.addToFirstEmptyBox(raw, id, verified.speciesName(id), verified.tacklePp(), pid, experience, selectedIvs, selectedEvs)
                         backup(raw, "before_gift_")
                         onApplySave(gift.bytes)
                         message = "已加入电脑第${gift.box}盒、第${gift.position}格。进入游戏后到电脑领取；原存档已备份。"
