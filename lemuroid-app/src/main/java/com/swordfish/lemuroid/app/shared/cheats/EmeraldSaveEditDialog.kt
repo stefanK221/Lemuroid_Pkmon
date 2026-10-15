@@ -187,7 +187,7 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit, onReadLiveSave: () -> ByteArray
                                 },
                             )
                             Column {
-                                Text("队伍第${position}只 · Lv.${info.partyLevels[position - 1]}")
+                                Text("队伍第${position}只 · 种类ID ${info.partySpecies[position - 1]} · Lv.${info.partyLevels[position - 1]}")
                                 Text("IV：${info.partyIvs[position - 1].joinToString("/")}")
                                 Text("EV：${info.partyEvs[position - 1].joinToString("/")}")
                             }
