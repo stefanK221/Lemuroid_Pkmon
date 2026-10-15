@@ -75,10 +75,12 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit, onReadLiveSave: () -> ByteArray
                 saveBytes = raw
                 inspection = parsed
                 selected = if (parsed.partyCount > 0) setOf(1) else emptySet()
+                individualEdits = emptyMap()
                 message = "已验证存档，队伍共有${parsed.partyCount}只。默认只选中第一只，其他成员需手动勾选。"
             }.onFailure {
                 saveBytes = null
                 inspection = null
+                individualEdits = emptyMap()
                 selected = emptySet()
                 liveSource = false
                 message = "格式或校验不通过：${it.message}"
@@ -109,6 +111,7 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit, onReadLiveSave: () -> ByteArray
         onApplyLiveSave(raw)
         saveBytes = null
         inspection = null
+        individualEdits = emptyMap()
         liveSource = false
         message = "存档已应用，游戏将重启。原存档已自动备份。"
     }
@@ -168,6 +171,7 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit, onReadLiveSave: () -> ByteArray
                         liveSource = false
                         saveBytes = null
                         inspection = null
+                        individualEdits = emptyMap()
                         message = "已更新存档并重启游戏。原存档备份：${backup.name}"
                     }.onFailure { message = "保存修改失败：${it.message}" }
                     pendingPatch = null
@@ -191,11 +195,13 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit, onReadLiveSave: () -> ByteArray
                         saveBytes = raw
                         inspection = parsed
                         selected = if (parsed.partyCount > 0) setOf(1) else emptySet()
+                        individualEdits = emptyMap()
                         liveSource = true
                         message = "已读取当前存档。默认只选中第一只；请先在游戏中保存，修改会重启游戏。"
                     }.onFailure {
                         saveBytes = null
                         inspection = null
+                        individualEdits = emptyMap()
                         selected = emptySet()
                         liveSource = false
                         message = "读取当前游戏存档失败：${it.message}"
