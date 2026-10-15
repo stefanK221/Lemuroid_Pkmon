@@ -174,6 +174,12 @@ abstract class BaseGameActivity : ImmersiveActivity() {
                         CheatManagerDialog(
                             gameId = game.id.toString(),
                             store = remember { CheatStore(applicationContext) },
+                            onClearAllCheats = {
+                                requireNotNull(baseGameScreenViewModel.retroGameView.retroGameView) {
+                                    "请等待游戏加载完成"
+                                }
+                                LibretroDroid.resetCheat()
+                            },
                             onApplyCheat = { index, enabled, code ->
                                 val activeView = requireNotNull(baseGameScreenViewModel.retroGameView.retroGameView) {
                                     "请等待游戏加载完成后再启用金手指"
