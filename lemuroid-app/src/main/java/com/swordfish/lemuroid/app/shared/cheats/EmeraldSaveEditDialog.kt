@@ -34,6 +34,11 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit, onReadLiveSave: () -> ByteArray
     val context = LocalContext.current
     var saveBytes by remember { mutableStateOf<ByteArray?>(null) }
     var pendingExport by remember { mutableStateOf<ByteArray?>(null) }
+    var pendingImport by remember { mutableStateOf<ByteArray?>(null) }
+    var showImportConfirm by remember { mutableStateOf(false) }
+    var showRestoreConfirm by remember { mutableStateOf(false) }
+    var selectedBackup by remember { mutableStateOf<java.io.File?>(null) }
+    var backupMenuExpanded by remember { mutableStateOf(false) }
     var inspection by remember { mutableStateOf<EmeraldSaveInspector.Inspection?>(null) }
     var selected by remember { mutableStateOf(setOf<Int>()) }
     var evMode by remember { mutableStateOf(0) }
@@ -50,7 +55,7 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit, onReadLiveSave: () -> ByteArray
                 val patched = requireNotNull(pendingExport) { "请重新选择导出" }
                 context.contentResolver.openOutputStream(uri)?.use { it.write(patched) }
                     ?: error("无法写入文件")
-            }.onSuccess { message = "新的6V存档已导出；原件没有修改。" }
+            }.onSuccess { message = "SAV已成功导出到所选位置。" }
                 .onFailure { message = "导出失败：${it.message}" }
         }
         pendingExport = null
@@ -75,6 +80,71 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit, onReadLiveSave: () -> ByteArray
             }
         }
     }
+    val importSave = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        if (uri != null) {
+            runCatching {
+                val raw = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                    ?: error("无法读取所选文件")
+                val parsed = EmeraldSaveInspector.inspect(raw)
+                pendingImport = raw
+                message = "导入存档已验证（序号${parsed.sequence}，队伍${parsed.partyCount}只）。请确认后替换当前游戏存档。"
+                showImportConfirm = true
+            }.onFailure {
+                pendingImport = null
+                message = "导入失败：${it.message}"
+            }
+        }
+    }
+    fun applyImported(raw: ByteArray) {
+        EmeraldSaveInspector.inspect(raw)
+        val current = onReadLiveSave()
+        EmeraldSaveInspector.inspect(current)
+        val dir = java.io.File(context.filesDir, "gba_plus_backups").apply { mkdirs() }
+        java.io.File.createTempFile("before_import_", ".sav", dir).writeBytes(current)
+        onApplyLiveSave(raw)
+        saveBytes = null
+        inspection = null
+        liveSource = false
+        message = "存档已应用，游戏将重启。原存档已自动备份。"
+    }
+    if (showImportConfirm) {
+        AlertDialog(
+            onDismissRequest = { showImportConfirm = false; pendingImport = null },
+            title = { Text("确认导入SAV？") },
+            text = { Text("将覆盖当前游戏存档并重启。当前存档会先自动备份，请确保已在游戏内保存。") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showImportConfirm = false
+                    runCatching { applyImported(requireNotNull(pendingImport)) }
+                        .onFailure { message = "应用导入存档失败：${it.message}" }
+                    pendingImport = null
+                }) { Text("备份并导入") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showImportConfirm = false; pendingImport = null }) { Text("取消") }
+            },
+        )
+    }
+    if (showRestoreConfirm) {
+        AlertDialog(
+            onDismissRequest = { showRestoreConfirm = false },
+            title = { Text("确认恢复备份？") },
+            text = { Text("将替换当前存档并重启。恢复前仍会自动备份当前存档。") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showRestoreConfirm = false
+                    runCatching {
+                        val raw = requireNotNull(selectedBackup).readBytes()
+                        applyImported(raw)
+                    }.onFailure { message = "恢复失败：${it.message}" }
+                    selectedBackup = null
+                }) { Text("确认恢复") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRestoreConfirm = false; selectedBackup = null }) { Text("取消") }
+            },
+        )
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("宝可梦属性编辑器") },
@@ -98,6 +168,42 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit, onReadLiveSave: () -> ByteArray
                         message = "读取当前游戏存档失败：${it.message}"
                     }
                 }) { Text("读取当前游戏存档（无需导入）") }
+                Text("存档管理")
+                Button(onClick = {
+                    runCatching {
+                        val raw = onReadLiveSave()
+                        EmeraldSaveInspector.inspect(raw)
+                        pendingExport = raw.copyOf()
+                    }.onSuccess { export.launch("pokemon_current_backup.sav") }
+                        .onFailure { message = "原样导出失败：${it.message}" }
+                }) { Text("原样导出当前SAV（不修改）") }
+                Button(onClick = { importSave.launch(arrayOf("application/octet-stream", "*/*")) }) {
+                    Text("导入SAV并应用到游戏")
+                }
+                val backups = remember(message) {
+                    java.io.File(context.filesDir, "gba_plus_backups")
+                        .listFiles { file -> file.isFile && file.extension == "sav" }
+                        ?.sortedByDescending { it.lastModified() }
+                        ?.take(20)
+                        ?: emptyList()
+                }
+                Box {
+                    Button(enabled = backups.isNotEmpty(), onClick = { backupMenuExpanded = true }) {
+                        Text("恢复自动备份（${backups.size}） ▾")
+                    }
+                    DropdownMenu(expanded = backupMenuExpanded, onDismissRequest = { backupMenuExpanded = false }) {
+                        backups.forEach { file ->
+                            DropdownMenuItem(
+                                text = { Text(file.name) },
+                                onClick = {
+                                    backupMenuExpanded = false
+                                    selectedBackup = file
+                                    showRestoreConfirm = true
+                                },
+                            )
+                        }
+                    }
+                }
                 Button(onClick = { load.launch(arrayOf("application/octet-stream", "*/*")) }) {
                     Text("选择 .sav 文件")
                 }
