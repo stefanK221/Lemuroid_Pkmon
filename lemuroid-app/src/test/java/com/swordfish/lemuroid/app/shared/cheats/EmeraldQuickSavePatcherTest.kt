@@ -114,6 +114,39 @@ class EmeraldQuickSavePatcherTest {
             EmeraldQuickSavePatcher.personalityFor(damaged, 0, true)
         }
     }
+    @Test fun giftCustomIvsAndEvsAreEncryptedAndValidated() {
+        val original = fixture()
+        val pid = 0x12345678L
+        val ivs = listOf(0, 1, 16, 29, 30, 31)
+        val evs = listOf(252, 0, 4, 250, 0, 4)
+        val result = EmeraldQuickSavePatcher.addToFirstEmptyBox(original, 6, name, 35, pid, 0, ivs, evs)
+        val record = offset(5) + 4
+        val plain = ByteArray(48)
+        repeat(12) { put32(plain, it * 4, u32(result.bytes, record + 32 + it * 4) xor pid xor 0x12345678L) }
+        val order = mutableListOf<List<Int>>()
+        fun permute(prefix: List<Int>, rest: List<Int>) {
+            if (rest.isEmpty()) order.add(prefix) else rest.forEach { permute(prefix + it, rest - it) }
+        }
+        permute(emptyList(), listOf(0, 1, 2, 3))
+        val permutation = order[(pid % 24).toInt()]
+        val effort = permutation.indexOf(2) * 12
+        val misc = permutation.indexOf(3) * 12
+        assertEquals(evs, (0..5).map { plain[effort + it].toInt() and 255 })
+        val packed = u32(plain, misc + 4)
+        assertEquals(ivs, (0..5).map { ((packed ushr (it * 5)) and 31).toInt() })
+        assertEquals(0L, packed ushr 30)
+        assertEquals(64L, EmeraldSaveInspector.inspect(result.bytes).sequence)
+        assertArrayEquals(fixture(), original)
+        assertThrows(IllegalArgumentException::class.java) {
+            EmeraldQuickSavePatcher.addToFirstEmptyBox(original, 6, name, 35, pid, 0, listOf(31), evs)
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            EmeraldQuickSavePatcher.addToFirstEmptyBox(original, 6, name, 35, pid, 0, ivs, listOf(255,255,255,0,0,0))
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            EmeraldQuickSavePatcher.addToFirstEmptyBox(original, 6, name, 35, pid, 0, listOf(32,1,1,1,1,1), evs)
+        }
+    }
     @Test fun occupiedSlotIsNeverReplaced() {
         val input = fixture()
         input[offset(5)+4] = 99; checksum(input,5)
