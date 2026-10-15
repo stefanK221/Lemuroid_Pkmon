@@ -40,6 +40,7 @@ fun CheatManagerDialog(
     var needsRestart by remember { mutableStateOf(false) }
     var confirmExit by remember { mutableStateOf(false) }
     var showAddForm by remember { mutableStateOf(false) }
+    var potentiallyActive by remember(gameId) { mutableStateOf(setOf<String>()) }
 
     if (confirmExit) {
         AlertDialog(
@@ -67,13 +68,22 @@ fun CheatManagerDialog(
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(item.title)
-                            Text(if (item.enabled) "运行中 · ${item.format.name}" else item.format.name)
+                            Text(when {
+                                item.enabled -> "已启用 · ${item.format.name}"
+                                item.id in potentiallyActive -> "已请求关闭 · 可能需重启"
+                                else -> item.format.name
+                            })
                         }
                         Button(onClick = {
                             runCatching {
                                 onApplyCheat(index, !item.enabled, item.code)
                                 store.setEnabled(gameId, item.id, !item.enabled)
-                                if (item.enabled) needsRestart = true
+                                if (item.enabled) {
+                                    needsRestart = true
+                                    potentiallyActive = potentiallyActive + item.id
+                                } else {
+                                    potentiallyActive = potentiallyActive - item.id
+                                }
                                 entries = store.read(gameId)
                                 error = null
                             }.onFailure { error = "操作失败：${it.message ?: it.javaClass.simpleName}" }
@@ -129,7 +139,7 @@ fun CheatManagerDialog(
                     Text("⚠️ 已向核心发送关闭指令，但穿墙等内存效果可能持续。彻底关闭需要退出并重新进入游戏。")
                     Button(onClick = { confirmExit = true }) { Text("退出游戏以彻底关闭（先存档）") }
                 }
-                Text("操作失败时，原因会显示在这里。")
+                if (error != null) Text("操作失败时请先退出本界面，避免重复提交不确定状态的代码。")
 
 
             }
