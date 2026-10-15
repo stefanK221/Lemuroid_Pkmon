@@ -41,6 +41,9 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit, onReadLiveSave: () -> ByteArray
     var backupMenuExpanded by remember { mutableStateOf(false) }
     var inspection by remember { mutableStateOf<EmeraldSaveInspector.Inspection?>(null) }
     var selected by remember { mutableStateOf(setOf<Int>()) }
+    var showSaveConfirm by remember { mutableStateOf(false) }
+    var pendingPatch by remember { mutableStateOf<ByteArray?>(null) }
+    var patchSummary by remember { mutableStateOf("") }
     var evMode by remember { mutableStateOf(0) }
     var evMenuExpanded by remember { mutableStateOf(false) }
     var customIvs by remember { mutableStateOf(List(6) { "31" }) }
@@ -142,6 +145,34 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit, onReadLiveSave: () -> ByteArray
             },
             dismissButton = {
                 TextButton(onClick = { showRestoreConfirm = false; selectedBackup = null }) { Text("取消") }
+            },
+        )
+    }
+    if (showSaveConfirm) {
+        AlertDialog(
+            onDismissRequest = { showSaveConfirm = false; pendingPatch = null },
+            title = { Text("确认修改队伍宝可梦？") },
+            text = { Text(patchSummary + "\\n将先备份当前SAV，然后保存修改并重启游戏。未保存的游戏进度可能丢失。") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showSaveConfirm = false
+                    runCatching {
+                        val original = requireNotNull(saveBytes)
+                        val patched = requireNotNull(pendingPatch)
+                        val dir = java.io.File(context.filesDir, "gba_plus_backups").apply { mkdirs() }
+                        val backup = java.io.File.createTempFile("before_6v_", ".sav", dir)
+                        backup.writeBytes(original)
+                        onApplyLiveSave(patched)
+                        liveSource = false
+                        saveBytes = null
+                        inspection = null
+                        message = "已更新存档并重启游戏。原存档备份：${backup.name}"
+                    }.onFailure { message = "保存修改失败：${it.message}" }
+                    pendingPatch = null
+                }) { Text("确认保存") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSaveConfirm = false; pendingPatch = null }) { Text("取消") }
             },
         )
     }
@@ -305,14 +336,9 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit, onReadLiveSave: () -> ByteArray
                                 val original = requireNotNull(saveBytes)
                                 val evs = evValues()
                                 val patched = EmeraldSixVPatcher.apply(original, selected, evs, ivValues())
-                                val dir = java.io.File(context.filesDir, "gba_plus_backups").apply { mkdirs() }
-                                val backup = java.io.File.createTempFile("before_6v_", ".sav", dir)
-                                backup.writeBytes(original)
-                                onApplyLiveSave(patched)
-                                liveSource = false
-                                saveBytes = null
-                                inspection = null
-                                message = "已直接更新游戏存档并重置游戏。原存档备份：${backup.name}"
+                                pendingPatch = patched
+                                patchSummary = "修改队伍位置：${selected.sorted().joinToString(", ")}\\nIV：${ivValues().joinToString("/")}\\nEV：${evs?.joinToString("/") ?: "保持原样"}"
+                                showSaveConfirm = true
                             }.onFailure { message = "直接修改失败：${it.message}" }
                         }) { Text("保存修改并重启游戏") }
                         Text("请先在游戏内正常保存；此操作将重置游戏，未保存的进度可能丢失。")
