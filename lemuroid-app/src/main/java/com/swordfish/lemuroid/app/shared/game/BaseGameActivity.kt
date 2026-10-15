@@ -156,7 +156,19 @@ abstract class BaseGameActivity : ImmersiveActivity() {
                         ) { Text("金手指") }
                     }
                     if (showSaveEditor) {
-                        EmeraldSaveEditDialog(onDismiss = { showSaveEditor = false })
+                        EmeraldSaveEditDialog(
+                            onDismiss = { showSaveEditor = false },
+                            onReadLiveSave = {
+                                val view = requireNotNull(baseGameScreenViewModel.retroGameView.retroGameView)
+                                view.serializeSRAM()
+                            },
+                            onApplyLiveSave = { patched ->
+                                val view = requireNotNull(baseGameScreenViewModel.retroGameView.retroGameView)
+                                check(view.unserializeSRAM(patched)) { "核心拒绝修改存档" }
+                                view.reset()
+                                showSaveEditor = false
+                            },
+                        )
                     }
                     if (showCheatManager) {
                         CheatManagerDialog(
