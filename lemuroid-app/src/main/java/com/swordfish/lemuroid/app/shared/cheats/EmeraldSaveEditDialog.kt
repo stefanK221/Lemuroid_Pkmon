@@ -319,11 +319,18 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit, onReadLiveSave: () -> ByteArray
                     TextButton(onClick = {
                         individualMode = !individualMode
                         individualEdits = emptyMap()
+                        selected = if (info.partyCount > 0) setOf(1) else emptySet()
+                        if (individualMode && info.partyCount > 0) {
+                            customIvs = info.partyIvs[0].map { it.toString() }
+                            customEvs = info.partyEvs[0].map { it.toString() }
+                            useCustomIvs = true
+                            evMode = 4
+                        }
                     }) {
                         Text(if (individualMode) "✓ 逐只独立设置（点击切回批量）" else "逐只独立设置IV/EV")
                     }
                     if (individualMode) {
-                        Text("先在下方勾选一只宝可梦，再调整上方IV/EV，点击「记录这只的设置」。依次记录多只，最后统一保存。")
+                        Text("下方每次只能选择一只；选择后自动填入当前IV、EV。调整后点击「记录这只的设置」，最后统一保存。")
                         Button(enabled = selected.size == 1, onClick = {
                             runCatching {
                                 val position = selected.single()
@@ -340,7 +347,20 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit, onReadLiveSave: () -> ByteArray
                             Checkbox(
                                 checked = position in selected,
                                 onCheckedChange = { enabled ->
-                                    selected = if (enabled) selected + position else selected - position
+                                    if (individualMode) {
+                                        selected = if (enabled) setOf(position) else emptySet()
+                                        if (enabled) {
+                                            val existing = individualEdits[position]
+                                            val ivs = existing?.first ?: info.partyIvs[position - 1]
+                                            val evs = existing?.second ?: info.partyEvs[position - 1]
+                                            customIvs = ivs.map { it.toString() }
+                                            customEvs = evs.map { it.toString() }
+                                            useCustomIvs = true
+                                            evMode = 4
+                                        }
+                                    } else {
+                                        selected = if (enabled) selected + position else selected - position
+                                    }
                                 },
                             )
                             Column {
