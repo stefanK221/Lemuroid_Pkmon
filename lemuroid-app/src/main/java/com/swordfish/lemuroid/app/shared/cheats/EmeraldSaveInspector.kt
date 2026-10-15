@@ -13,9 +13,32 @@ object EmeraldSaveInspector {
         3884, 3968, 3968, 3968, 3848, 3968, 3968,
         3968, 3968, 3968, 3968, 3968, 3968, 2000,
     )
-    data class Inspection(val sequence: Long, val partyCount: Int, val partyIvs: List<List<Int>>, val activeSlot: Int, val partyEvs: List<List<Int>>, val partyLevels: List<Int>, val partySpecies: List<Int>)
+    data class Inspection(val sequence: Long, val partyCount: Int, val partyIvs: List<List<Int>>, val activeSlot: Int, val partyEvs: List<List<Int>>, val partyLevels: List<Int>, val partySpecies: List<Int>, val partyNames: List<String>)
 
-    private data class PartyStats(val ivs: List<Int>, val evs: List<Int>, val level: Int, val species: Int)
+    private data class PartyStats(val ivs: List<Int>, val evs: List<Int>, val level: Int, val species: Int, val name: String)
+
+    // Gen III's English character table: uppercase 0xBB..0xD4, lowercase 0xD5..0xEE,
+    // digits 0xA1..0xAA, terminator 0xFF. Unknown glyphs are not guessed.
+    private fun partyNickname(bytes: ByteArray, start: Int): String {
+        val result = StringBuilder()
+        for (offset in 8 until 18) {
+            val value = bytes[start + offset].toInt() and 255
+            if (value == 0xFF) break
+            val character = when (value) {
+                in 0xBB..0xD4 -> ('A'.code + value - 0xBB).toChar()
+                in 0xD5..0xEE -> ('a'.code + value - 0xD5).toChar()
+                in 0xA1..0xAA -> ('0'.code + value - 0xA1).toChar()
+                0x00 -> ' '
+                0xAB -> '!'
+                0xAC -> '?'
+                0xAD -> '.'
+                0xB8 -> ','
+                else -> return ""
+            }
+            result.append(character)
+        }
+        return result.toString().trim()
+    }
 
     private fun uint16(b: ByteArray, i: Int): Int =
         (b[i].toInt() and 255) or ((b[i + 1].toInt() and 255) shl 8)
@@ -91,8 +114,8 @@ object EmeraldSaveInspector {
             val miscBlock = permutations[(personality % 24).toInt()].indexOf(3)
             val field = uint32(plain, miscBlock * 12 + 4)
             val ivs = (0 until 6).map { ((field ushr (it * 5)) and 31).toInt() }
-            PartyStats(ivs, evs, bytes[start + 84].toInt() and 255, species)
+            PartyStats(ivs, evs, bytes[start + 84].toInt() and 255, species, partyNickname(bytes, start))
         }
-        return Inspection(sequence, count, partyStats.map { it.ivs }, activeSlot, partyStats.map { it.evs }, partyStats.map { it.level }, partyStats.map { it.species })
+        return Inspection(sequence, count, partyStats.map { it.ivs }, activeSlot, partyStats.map { it.evs }, partyStats.map { it.level }, partyStats.map { it.species }, partyStats.map { it.name })
     }
 }
