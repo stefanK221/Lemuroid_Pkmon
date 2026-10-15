@@ -58,6 +58,18 @@ class SavePatcherTests(unittest.TestCase):
         self.assertEqual(party_records(edited, sections)[0][-1], [31] * 6)
         self.assertEqual(edited[:57344], data[:57344])
 
+    def test_select_first_party_member(self):
+        data = make_save()
+        edited, before = patch_six_v(data, [1])
+        self.assertEqual(len(before), 1)
+        _, sections = active_sections(edited)
+        self.assertEqual(party_records(edited, sections)[0][-1], [31] * 6)
+
+    def test_invalid_party_slot_rejected(self):
+        for invalid in ([0], [2], [], [-1]):
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                patch_six_v(make_save(), invalid)
+
     def test_bad_signature_rejected(self):
         raw = bytearray(make_save())
         raw[0xFF8:0xFFC] = b"FAIL"
