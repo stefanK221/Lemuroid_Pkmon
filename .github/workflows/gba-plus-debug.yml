@@ -25,6 +25,16 @@ jobs:
           distribution: temurin
           java-version: '17'
           cache: gradle
+      - name: Checkout the bundled mGBA source revision
+        uses: actions/checkout@v4
+        with:
+          repository: mgba-emu/mgba
+          ref: c758314a639aa0066e7b65a8341448181b73c804
+          path: work/mgba-native
+      - name: Install Android NDK for the repaired core
+        run: sdkmanager 'ndk;27.2.12479018'
+      - name: Test ROM patch restoration and rebuild mGBA
+        run: bash tools/build_mgba_fixed.sh
       - name: Check preinstalled Android SDK
         run: |
           test -d "${ANDROID_HOME:-/usr/local/lib/android/sdk}"
@@ -40,3 +50,4 @@ jobs:
           path: lemuroid-app/build/outputs/apk/freeBundle/debug/*.apk
           if-no-files-found: error
           retention-days: 14
+
