@@ -22,6 +22,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.swordfish.lemuroid.app.shared.cheats.CheatManagerDialog
 import com.swordfish.lemuroid.app.shared.cheats.CheatStore
+import com.swordfish.lemuroid.app.shared.cheats.EmeraldSaveEditDialog
 import androidx.activity.viewModels
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.Lifecycle
@@ -136,6 +137,7 @@ abstract class BaseGameActivity : ImmersiveActivity() {
         setContent {
             AppTheme {
                 var showCheatManager by remember { mutableStateOf(false) }
+                var showSaveEditor by remember { mutableStateOf(false) }
                 Box(modifier = Modifier.fillMaxSize()) {
                     BaseGameScreen(viewModel = baseGameScreenViewModel) {
                         GameScreen(viewModel)
@@ -146,10 +148,17 @@ abstract class BaseGameActivity : ImmersiveActivity() {
                             onClick = { showCheatManager = true },
                         ) { Text("金手指") }
                     }
+                    if (showSaveEditor) {
+                        EmeraldSaveEditDialog(onDismiss = { showSaveEditor = false })
+                    }
                     if (showCheatManager) {
                         CheatManagerDialog(
                             gameId = game.id.toString(),
                             store = remember { CheatStore(applicationContext) },
+                            onOpenSaveEditor = {
+                                showCheatManager = false
+                                showSaveEditor = true
+                            },
                             onDismiss = { showCheatManager = false },
                         )
                     }
