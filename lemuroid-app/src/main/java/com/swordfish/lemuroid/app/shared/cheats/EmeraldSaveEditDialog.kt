@@ -73,7 +73,7 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit, onReadLiveSave: () -> ByteArray
     }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("宝可梦6V / 努力值工具（实验功能）") },
+        title = { Text("宝可梦属性编辑器") },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 Text(message)
@@ -179,7 +179,7 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit, onReadLiveSave: () -> ByteArray
                                 inspection = null
                                 message = "已直接更新游戏存档并重置游戏。原存档备份：${backup.name}"
                             }.onFailure { message = "直接修改失败：${it.message}" }
-                        }) { Text("直接应用6V到当前游戏（会重置）") }
+                        }) { Text("保存修改并重启游戏") }
                         Text("请先在游戏内正常保存；此操作将重置游戏，未保存的进度可能丢失。")
                     }
                     Button(
@@ -189,10 +189,10 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit, onReadLiveSave: () -> ByteArray
                                 val source = requireNotNull(saveBytes)
                                 val evs = evValues()
                                 pendingExport = EmeraldSixVPatcher.apply(source, selected, evs, ivValues())
-                            }.onSuccess { export.launch("pokemon_6v_test.sav") }
+                            }.onSuccess { export.launch("pokemon_edited.sav") }
                                 .onFailure { message = "修改验证失败，未创建文件：${it.message}" }
                         },
-                    ) { Text("导出新6V存档") }
+                    ) { Text("导出修改后的存档") }
                 }
             }
         },
