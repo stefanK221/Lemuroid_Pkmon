@@ -27,6 +27,7 @@ class CheatStore(context: Context) {
                         code = item.getString("code"),
                         format = CheatFormat.valueOf(item.getString("format")),
                         enabled = item.optBoolean("enabled", false),
+                        favorite = item.optBoolean("favorite", false),
                     )
                 }.getOrNull()
             }
@@ -64,6 +65,10 @@ class CheatStore(context: Context) {
         save(gameId, read(gameId).map { if (it.id == id) it.copy(enabled = enabled) else it })
     }
 
+    fun setFavorite(gameId: String, id: String, favorite: Boolean) {
+        save(gameId, read(gameId).map { if (it.id == id) it.copy(favorite = favorite) else it })
+    }
+
     fun delete(gameId: String, id: String) {
         save(gameId, read(gameId).filterNot { it.id == id })
     }
@@ -77,6 +82,7 @@ class CheatStore(context: Context) {
                 put("code", entry.code)
                 put("format", entry.format.name)
                 put("enabled", entry.enabled)
+                put("favorite", entry.favorite)
             })
         }
         check(preferences.edit().putString(gameId, array.toString()).commit()) { "Unable to save cheat definitions" }
