@@ -10,11 +10,11 @@ common=(-DBUILD_QT=OFF -DBUILD_SDL=OFF -DBUILD_GL=OFF -DBUILD_GLES2=OFF -DBUILD_
         -DENABLE_DEBUGGERS=OFF -DENABLE_SCRIPTING=OFF -DDISABLE_DEPS=ON
         -DUSE_FFMPEG=OFF -DUSE_LZMA=OFF -DUSE_LIBZIP=OFF -DUSE_MINIZIP=OFF
         -DUSE_ELF=OFF -DUSE_JSON_C=OFF -DUSE_FREETYPE=OFF -DBUILD_LTO=OFF)
-cmake -S "$source_dir" -B "$build_root/host" "${common[@]}" -DBUILD_SHARED=ON
+cmake -S "$source_dir" -B "$build_root/host" "${common[@]}" -DBUILD_SHARED=OFF -DBUILD_STATIC=ON
 cmake --build "$build_root/host" --target mgba --parallel 2
 cc -std=c11 -D_GNU_SOURCE -I "$source_dir/include" -I "$build_root/host/include" \
    "$repo_root/tools/test_mgba_cheat_reset.c" -L "$build_root/host" \
-   -Wl,-rpath,"$build_root/host" -lmgba -o "$build_root/test-reset"
+   -lmgba -lm -lpthread -o "$build_root/test-reset"
 if "$build_root/test-reset" --legacy; then
     echo 'Regression test failed to reproduce the original bug' >&2
     exit 1
