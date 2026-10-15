@@ -12,7 +12,7 @@ def write32(buf, offset, value):
 def write16(buf, offset, value):
     struct.pack_into("<H", buf, offset, value)
 
-def make_save():
+def make_save(party_count=1):
     data = bytearray(131072)
     for slot, sequence in ((0, 10), (1, 11)):
         offsets = {}
@@ -25,21 +25,21 @@ def make_save():
 
         if slot == 1:
             section = offsets[1]
-            write32(data, section + 0x234, 1)
-            pokemon = section + 0x238
-            personality = 0
-            trainer_id = 0x12345678
-            key = personality ^ trainer_id
-            write32(data, pokemon, personality)
-            write32(data, pokemon + 4, trainer_id)
-            decrypted = bytearray(48)
-            # PID 0 => growth, attacks, EV, misc. Species = 25.
-            write16(decrypted, 0, 25)
-            # Misc block IV DWORD starts at 36 + 4.
-            write32(decrypted, 40, 0x40000000 | 0x00000000)
-            write16(data, pokemon + 28, sum(struct.unpack("<24H", decrypted)) & 0xFFFF)
-            for index in range(12):
-                write32(data, pokemon + 32 + index * 4, struct.unpack_from("<I", decrypted, index * 4)[0] ^ key)
+            write32(data, section + 0x234, party_count)
+            for member in range(party_count):
+                pokemon = section + 0x238 + member * 100
+                personality = 0
+                trainer_id = 0x12345678 + member
+                key = personality ^ trainer_id
+                write32(data, pokemon, personality)
+                write32(data, pokemon + 4, trainer_id)
+                decrypted = bytearray(48)
+                write16(decrypted, 0, 25 + member)
+                write32(decrypted, 40, 0x40000000 | member)
+                write16(data, pokemon + 28, sum(struct.unpack("<24H", decrypted)) & 0xFFFF)
+                for index in range(12):
+                    write32(data, pokemon + 32 + index * 4,
+                            struct.unpack_from("<I", decrypted, index * 4)[0] ^ key)
 
         for index, off in offsets.items():
             write16(data, off + 0xFF6, checksum(data[off:off + LENGTHS[index]]))
@@ -64,6 +64,32 @@ class SavePatcherTests(unittest.TestCase):
         self.assertEqual(len(before), 1)
         _, sections = active_sections(edited)
         self.assertEqual(party_records(edited, sections)[0][-1], [31] * 6)
+
+    def test_six_member_noncontiguous_selection_preserves_others(self):
+        original = make_save(party_count=6)
+        edited, before = patch_six_v(original, [2, 4, 6])
+        self.assertEqual(len(before), 3)
+        _, old_sections = active_sections(original)
+        _, new_sections = active_sections(edited)
+        old_records = party_records(original, old_sections)
+        new_records = party_records(edited, new_sections)
+        self.assertEqual(len(new_records), 6)
+        for index in range(6):
+            if index in (1, 3, 5):
+                self.assertEqual(new_records[index][-1], [31] * 6)
+            else:
+                self.assertEqual(new_records[index][-1], old_records[index][-1])
+                start = old_records[index][0]
+                self.assertEqual(edited[start:start + 100], original[start:start + 100])
+        self.assertEqual(edited[:57344], original[:57344])
+
+    def test_six_member_patch_all(self):
+        original = make_save(party_count=6)
+        edited, before = patch_six_v(original)
+        self.assertEqual(len(before), 6)
+        _, sections = active_sections(edited)
+        self.assertTrue(all(record[-1] == [31] * 6
+                            for record in party_records(edited, sections)))
 
     def test_invalid_party_slot_rejected(self):
         for invalid in ([0], [2], [], [-1]):
