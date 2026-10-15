@@ -354,7 +354,7 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit, onReadLiveSave: () -> ByteArray
                         Button(enabled = if (individualMode) individualEdits.isNotEmpty() else selected.isNotEmpty(), onClick = {
                             runCatching {
                                 val original = requireNotNull(saveBytes)
-                                val evs = evValues()
+                                val evs = if (individualMode) null else evValues()
                                 val patched = if (individualMode) {
                                     EmeraldSixVPatcher.applyIndividual(original, individualEdits)
                                 } else {
@@ -378,8 +378,11 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit, onReadLiveSave: () -> ByteArray
                         onClick = {
                             runCatching {
                                 val source = requireNotNull(saveBytes)
-                                val evs = evValues()
-                                pendingExport = EmeraldSixVPatcher.apply(source, selected, evs, ivValues())
+                                pendingExport = if (individualMode) {
+                                    EmeraldSixVPatcher.applyIndividual(source, individualEdits)
+                                } else {
+                                    EmeraldSixVPatcher.apply(source, selected, evValues(), ivValues())
+                                }
                             }.onSuccess { export.launch("pokemon_edited.sav") }
                                 .onFailure { message = "修改验证失败，未创建文件：${it.message}" }
                         },
