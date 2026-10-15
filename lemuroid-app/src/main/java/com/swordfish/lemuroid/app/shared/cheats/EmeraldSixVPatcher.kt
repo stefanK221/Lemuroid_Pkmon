@@ -43,6 +43,28 @@ object EmeraldSixVPatcher {
         rec(emptyList(), listOf(0, 1, 2, 3))
     }
 
+    /** Apply independently configured IV/EV spreads to each selected party member. */
+    fun applyIndividual(
+        input: ByteArray,
+        changes: Map<Int, Pair<List<Int>, List<Int>?>>,
+    ): ByteArray {
+        require(changes.isNotEmpty()) { "No party members selected" }
+        val original = EmeraldSaveInspector.inspect(input)
+        require(changes.keys.all { it in 1..original.partyCount }) { "Invalid party position" }
+        var result = input.copyOf()
+        for ((position, spread) in changes.toSortedMap()) {
+            result = apply(result, setOf(position), spread.second, spread.first)
+        }
+        val verified = EmeraldSaveInspector.inspect(result)
+        for ((position, spread) in changes) {
+            check(verified.partyIvs[position - 1] == spread.first)
+            if (spread.second != null) {
+                check(verified.partyEvs[position - 1] == spread.second)
+            }
+        }
+        return result
+    }
+
     /** Party positions are 1-based; an empty selection is rejected. */
     fun apply(input: ByteArray, selectedPositions: Set<Int>, evPreset: List<Int>? = null, ivPreset: List<Int> = List(6) { 31 }): ByteArray {
         require(evPreset == null || (evPreset.size == 6 && evPreset.all { it in 0..252 } && evPreset.sum() <= 510)) { "Invalid EV spread" }
