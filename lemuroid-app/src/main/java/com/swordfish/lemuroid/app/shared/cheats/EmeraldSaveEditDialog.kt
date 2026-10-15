@@ -152,7 +152,7 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit, onReadLiveSave: () -> ByteArray
         AlertDialog(
             onDismissRequest = { showSaveConfirm = false; pendingPatch = null },
             title = { Text("确认修改队伍宝可梦？") },
-            text = { Text(patchSummary + "\\n将先备份当前SAV，然后保存修改并重启游戏。未保存的游戏进度可能丢失。") },
+            text = { Text(patchSummary + "\n将先备份当前SAV，然后保存修改并重启游戏。未保存的游戏进度可能丢失。") },
             confirmButton = {
                 TextButton(onClick = {
                     showSaveConfirm = false
@@ -337,7 +337,7 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit, onReadLiveSave: () -> ByteArray
                                 val evs = evValues()
                                 val patched = EmeraldSixVPatcher.apply(original, selected, evs, ivValues())
                                 pendingPatch = patched
-                                patchSummary = "修改队伍位置：${selected.sorted().joinToString(", ")}\\nIV：${ivValues().joinToString("/")}\\nEV：${evs?.joinToString("/") ?: "保持原样"}"
+                                patchSummary = "修改队伍位置：${selected.sorted().joinToString(", ")}\nIV：${ivValues().joinToString("/")}\nEV：${evs?.joinToString("/") ?: "保持原样"}"
                                 showSaveConfirm = true
                             }.onFailure { message = "直接修改失败：${it.message}" }
                         }) { Text("保存修改并重启游戏") }
