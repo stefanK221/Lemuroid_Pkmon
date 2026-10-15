@@ -11,8 +11,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Text
@@ -34,6 +37,7 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit, onReadLiveSave: () -> ByteArray
     var inspection by remember { mutableStateOf<EmeraldSaveInspector.Inspection?>(null) }
     var selected by remember { mutableStateOf(setOf<Int>()) }
     var evMode by remember { mutableStateOf(0) }
+    var evMenuExpanded by remember { mutableStateOf(false) }
     var customIvs by remember { mutableStateOf(List(6) { "31" }) }
     var customEvs by remember { mutableStateOf(List(6) { "0" }) }
     var useCustomIvs by remember { mutableStateOf(false) }
@@ -98,10 +102,31 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit, onReadLiveSave: () -> ByteArray
                     Text("选择 .sav 文件")
                 }
                 inspection?.let { info ->
-                    Text("努力值方案（仅修改选中的队伍成员）")
-                    listOf("保持原样", "攻击252 / 速度252 / HP6", "特攻252 / 速度252 / HP6", "全部清零", "自定义努力值").forEachIndexed { index, label ->
-                        TextButton(onClick = { evMode = index }) {
-                            Text((if (evMode == index) "✓ " else "") + label)
+                    val evOptions = listOf(
+                        "保持原样",
+                        "攻击252 / 速度252 / HP6",
+                        "特攻252 / 速度252 / HP6",
+                        "全部清零",
+                        "自定义努力值",
+                    )
+                    Text("努力值方案（仅修改选中的成员）")
+                    Box {
+                        Button(onClick = { evMenuExpanded = true }) {
+                            Text(evOptions[evMode] + " ▾")
+                        }
+                        DropdownMenu(
+                            expanded = evMenuExpanded,
+                            onDismissRequest = { evMenuExpanded = false },
+                        ) {
+                            evOptions.forEachIndexed { index, label ->
+                                DropdownMenuItem(
+                                    text = { Text((if (evMode == index) "✓ " else "") + label) },
+                                    onClick = {
+                                        evMode = index
+                                        evMenuExpanded = false
+                                    },
+                                )
+                            }
                         }
                     }
                     TextButton(onClick = { useCustomIvs = !useCustomIvs }) {
@@ -161,7 +186,11 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit, onReadLiveSave: () -> ByteArray
                                     selected = if (enabled) selected + position else selected - position
                                 },
                             )
-                            Text("队伍第${position}只 · Lv.${info.partyLevels[position - 1]} IV：${info.partyIvs[position - 1].joinToString("/")}; EV：${info.partyEvs[position - 1].joinToString("/")}")
+                            Column {
+                                Text("队伍第${position}只 · Lv.${info.partyLevels[position - 1]}")
+                                Text("IV：${info.partyIvs[position - 1].joinToString("/")}")
+                                Text("EV：${info.partyEvs[position - 1].joinToString("/")}")
+                            }
                         }
                     }
                     if (liveSource) {
