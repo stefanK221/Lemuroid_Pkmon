@@ -155,6 +155,12 @@ abstract class BaseGameActivity : ImmersiveActivity() {
                         CheatManagerDialog(
                             gameId = game.id.toString(),
                             store = remember { CheatStore(applicationContext) },
+                            onApplyCheat = { index, enabled, code ->
+                                val activeView = requireNotNull(baseGameScreenViewModel.retroGameView.retroGameView) {
+                                    "请等待游戏加载完成后再启用金手指"
+                                }
+                                activeView.setCheat(index, enabled, code.lines().filter { it.isNotBlank() }.joinToString("+"))
+                            },
                             onOpenSaveEditor = {
                                 showCheatManager = false
                                 showSaveEditor = true
