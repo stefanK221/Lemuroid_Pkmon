@@ -78,10 +78,11 @@ object EmeraldQuickSavePatcher {
         error("无法生成符合性格与闪光要求的精灵，请重试")
     }
 
-    fun addToFirstEmptyBox(input: ByteArray, species: Int, nickname: ByteArray, pp: Int, personality: Long): Gift {
+    fun addToFirstEmptyBox(input: ByteArray, species: Int, nickname: ByteArray, pp: Int, personality: Long, experience: Long = 0): Gift {
         require(species in 1..251 || species in 277..411) { "不支持的精灵内部编号" }
         require(nickname.size == 11 && nickname[0] != 0xFF.toByte()) { "精灵名称读取失败" }
         require(pp in 1..64 && personality in 0..0xFFFFFFFFL)
+        require(experience in 0..0xFFFFFFFFL) { "经验值超出存档格式范围" }
         val offsets = sections(input)
         val storage = ByteArray(33744)
         var copied = 0
@@ -108,7 +109,7 @@ object EmeraldQuickSavePatcher {
         val attacks = order.indexOf(1) * 12
         val misc = order.indexOf(3) * 12
         put16(plain, growth, species)
-        put32(plain, growth + 4, 0) // experience zero yields level 1 on withdrawal
+        put32(plain, growth + 4, experience) // level is derived from experience on withdrawal
         plain[growth + 9] = 70
         put16(plain, attacks, 33) // Tackle; PP comes from this ROM's move table
         plain[attacks + 8] = pp.toByte()
