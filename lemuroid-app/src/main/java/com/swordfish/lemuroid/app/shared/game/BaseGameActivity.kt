@@ -54,6 +54,7 @@ import com.swordfish.lemuroid.lib.library.db.entity.Game
 import com.swordfish.lemuroid.lib.saves.SavesManager
 import com.swordfish.lemuroid.lib.saves.StatesManager
 import com.swordfish.lemuroid.lib.saves.StatesPreviewManager
+import com.swordfish.libretrodroid.LibretroDroid
 import com.swordfish.touchinput.radial.sensors.TiltConfiguration
 import dagger.Lazy
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -165,7 +166,33 @@ abstract class BaseGameActivity : ImmersiveActivity() {
                                 val activeView = requireNotNull(baseGameScreenViewModel.retroGameView.retroGameView) {
                                     "请等待游戏加载完成后再启用金手指"
                                 }
-                                activeView.setCheat(index, enabled, code.lines().filter { it.isNotBlank() }.joinToString("+"))
+                                val storedCheats = CheatStore(applicationContext).read(game.id.toString())
+                                require(index in storedCheats.indices) { "金手指不存在，请重新打开列表" }
+                                // mGBA ignores the 'enabled' parameter in retro_cheat_set.
+                                // Clear the native list and rebuild it from the desired enabled entries.
+                                // A direct call is safe here: LibretroDroid serializes core access with coreLock.
+                                fun applySet(chosen: List<com.swordfish.lemuroid.app.shared.cheats.CheatEntry>) {
+                                    LibretroDroid.resetCheat()
+                                    chosen.forEachIndexed { codeIndex, item ->
+                                        if (item.enabled) {
+                                            activeView.setCheat(
+                                                codeIndex,
+                                                true,
+                                                item.code.lines().filter { it.isNotBlank() }.joinToString("+"),
+                                                false,
+                                            )
+                                        }
+                                    }
+                                }
+                                val revised = storedCheats.mapIndexed { i, item ->
+                                    if (i == index) item.copy(enabled = enabled) else item
+                                }
+                                try {
+                                    applySet(revised)
+                                } catch (cause: Exception) {
+                                    runCatching { applySet(storedCheats) }
+                                    throw cause
+                                }
                             },
                             onOpenSaveEditor = {
                                 showCheatManager = false
