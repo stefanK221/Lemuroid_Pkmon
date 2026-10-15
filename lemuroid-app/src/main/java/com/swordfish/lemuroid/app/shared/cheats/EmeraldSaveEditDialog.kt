@@ -66,6 +66,7 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit, onReadLiveSave: () -> ByteArray
                 saveBytes = null
                 inspection = null
                 selected = emptySet()
+                liveSource = false
                 message = "格式或校验不通过：${it.message}"
             }
         }
@@ -85,7 +86,13 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit, onReadLiveSave: () -> ByteArray
                         selected = (1..parsed.partyCount).toSet()
                         liveSource = true
                         message = "已读取当前游戏存档。请先在游戏中正常保存；修改将重置游戏。"
-                    }.onFailure { message = "读取当前游戏存档失败：${it.message}" }
+                    }.onFailure {
+                        saveBytes = null
+                        inspection = null
+                        selected = emptySet()
+                        liveSource = false
+                        message = "读取当前游戏存档失败：${it.message}"
+                    }
                 }) { Text("读取当前游戏存档（无需导入）") }
                 Button(onClick = { load.launch(arrayOf("application/octet-stream", "*/*")) }) {
                     Text("选择 .sav 文件")
