@@ -13,7 +13,7 @@ object EmeraldSaveInspector {
         3884, 3968, 3968, 3968, 3848, 3968, 3968,
         3968, 3968, 3968, 3968, 3968, 3968, 2000,
     )
-    data class Inspection(val sequence: Long, val partyCount: Int, val partyIvs: List<List<Int>>, val activeSlot: Int, val partyEvs: List<List<Int>>)
+    data class Inspection(val sequence: Long, val partyCount: Int, val partyIvs: List<List<Int>>, val activeSlot: Int, val partyEvs: List<List<Int>>, val partyLevels: List<Int>)
 
     private fun uint16(b: ByteArray, i: Int): Int =
         (b[i].toInt() and 255) or ((b[i + 1].toInt() and 255) shl 8)
@@ -87,8 +87,8 @@ object EmeraldSaveInspector {
             val miscBlock = permutations[(personality % 24).toInt()].indexOf(3)
             val field = uint32(plain, miscBlock * 12 + 4)
             val ivs = (0 until 6).map { ((field ushr (it * 5)) and 31).toInt() }
-            Pair(ivs, evs)
+            Triple(ivs, evs, bytes[start + 84].toInt() and 255)
         }
-        return Inspection(sequence, count, partyStats.map { it.first }, activeSlot, partyStats.map { it.second })
+        return Inspection(sequence, count, partyStats.map { it.first }, activeSlot, partyStats.map { it.second }, partyStats.map { it.third })
     }
 }
