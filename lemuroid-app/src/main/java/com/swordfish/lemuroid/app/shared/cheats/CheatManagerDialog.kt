@@ -10,7 +10,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -69,6 +68,7 @@ fun CheatManagerDialog(
                     }
                 }
                 if (error != null) Text(error!!)
+                Text("启用时如发生错误，原因会显示在这里。")
                 Button(
                     onClick = {
                         runCatching {
@@ -86,18 +86,19 @@ fun CheatManagerDialog(
                             Text(item.title)
                             Text(item.format.name)
                         }
-                        Switch(
-                            checked = item.enabled,
+                        Button(
                             enabled = !item.enabled,
-                            onCheckedChange = { enabled ->
+                            onClick = {
                                 runCatching {
                                     onApplyCheat(index, true, item.code)
-                                    store.setEnabled(gameId, item.id, enabled)
+                                    store.setEnabled(gameId, item.id, true)
                                     entries = store.read(gameId)
                                     error = null
-                                }.onFailure { error = "金手指应用失败：${it.message}" }
+                                }.onFailure {
+                                    error = "启用失败：${it.message ?: it.javaClass.simpleName}"
+                                }
                             },
-                        )
+                        ) { Text(if (item.enabled) "已启用" else "启用") }
                         TextButton(enabled = !item.enabled, onClick = {
                             runCatching {
                                 require(!item.enabled) { "已启用的代码请重启游戏后删除" }
