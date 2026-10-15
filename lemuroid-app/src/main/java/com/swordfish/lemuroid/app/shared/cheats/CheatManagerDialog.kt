@@ -43,6 +43,8 @@ fun CheatManagerDialog(
     var confirmExit by remember { mutableStateOf(false) }
     var showAddForm by remember { mutableStateOf(false) }
     var editingId by remember(gameId) { mutableStateOf<String?>(null) }
+    var filterText by remember(gameId) { mutableStateOf("") }
+    var showEnabledOnly by remember(gameId) { mutableStateOf(false) }
     var potentiallyActive by remember(gameId) { mutableStateOf(setOf<String>()) }
     var lastDisabledIds by remember(gameId) { mutableStateOf(setOf<String>()) }
 
@@ -81,7 +83,17 @@ fun CheatManagerDialog(
             ) {
                 Text("金手指可能改变游戏内存；即使停止执行，穿墙等效果仍可能持续。请先备份存档。")
                 Button(onClick = onOpenQuickTools) { Text("常用功能：金钱 / 大师球 / 指定精灵") }
-                Text("已保存金手指（${entries.size}）")
+                Text("已保存金手指（${entries.size}），启用中 ${entries.count { it.enabled }}")
+                OutlinedTextField(
+                    value = filterText,
+                    onValueChange = { filterText = it },
+                    label = { Text("搜索金手指名称或代码") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                )
+                TextButton(onClick = { showEnabledOnly = !showEnabledOnly }) {
+                    Text(if (showEnabledOnly) "✓ 仅看已启用（点击显示全部）" else "仅查看已启用")
+                }
                 if (entries.any { it.enabled }) {
                     Button(onClick = {
                         runCatching {
@@ -102,7 +114,16 @@ fun CheatManagerDialog(
                 }
 
                 if (entries.isEmpty()) Text("暂无金手指，点击下方「新增代码」。")
-                entries.forEachIndexed { index, item ->
+                val filteredEntries = entries.withIndex().filter { (_, item) ->
+                    (!showEnabledOnly || item.enabled) &&
+                        (filterText.isBlank() ||
+                            item.title.contains(filterText, ignoreCase = true) ||
+                            item.code.contains(filterText, ignoreCase = true))
+                }
+                if (entries.isNotEmpty() && filteredEntries.isEmpty()) {
+                    Text("没有匹配的金手指，请调整搜索条件。")
+                }
+                filteredEntries.forEach { (index, item) ->
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(item.title)
