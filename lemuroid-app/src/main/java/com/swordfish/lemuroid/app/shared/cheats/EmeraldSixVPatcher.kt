@@ -53,14 +53,7 @@ object EmeraldSixVPatcher {
         val output = input.copyOf()
 
         // Use the active slot, locating sections by their stored ID rather than physical order.
-        val activeSlot = (0..1).first { slot ->
-            val base = slot * SLOT_BYTES
-            (0 until 14).any { physical ->
-                val section = base + physical * 4096
-                u16(output, section + 0xff4) == 1 &&
-                    u32(output, section + 0xffc) == original.sequence
-            }
-        }
+        val activeSlot = original.activeSlot
         val section1 = (0 until 14).map { activeSlot * SLOT_BYTES + it * 4096 }
             .first { u16(output, it + 0xff4) == 1 }
 
