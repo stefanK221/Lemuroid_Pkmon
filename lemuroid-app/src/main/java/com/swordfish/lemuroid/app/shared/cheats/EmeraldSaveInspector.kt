@@ -13,7 +13,7 @@ object EmeraldSaveInspector {
         3884, 3968, 3968, 3968, 3848, 3968, 3968,
         3968, 3968, 3968, 3968, 3968, 3968, 2000,
     )
-    data class Inspection(val sequence: Long, val partyCount: Int, val partyIvs: List<List<Int>>)
+    data class Inspection(val sequence: Long, val partyCount: Int, val partyIvs: List<List<Int>>, val activeSlot: Int)
 
     private fun uint16(b: ByteArray, i: Int): Int =
         (b[i].toInt() and 255) or ((b[i + 1].toInt() and 255) shl 8)
@@ -55,10 +55,10 @@ object EmeraldSaveInspector {
                 offsets[id] = start
                 seq = sequence
             }
-            if (good && offsets.all { it >= 0 } && seq != null) Pair(seq, offsets) else null
+            if (good && offsets.all { it >= 0 } && seq != null) Triple(seq, offsets, slot) else null
         }
         require(candidates.isNotEmpty()) { "No valid Emerald save slot found" }
-        val (sequence, offsets) = candidates.maxBy { it.first }
+        val (sequence, offsets, activeSlot) = candidates.maxBy { it.first }
         val section1 = offsets[1]
         val count = uint32(bytes, section1 + 0x234).toInt()
         require(count in 0..6) { "Invalid party size" }
@@ -86,6 +86,6 @@ object EmeraldSaveInspector {
             val field = uint32(plain, miscBlock * 12 + 4)
             (0 until 6).map { ((field ushr (it * 5)) and 31).toInt() }
         }
-        return Inspection(sequence, count, ivs)
+        return Inspection(sequence, count, ivs, activeSlot)
     }
 }
