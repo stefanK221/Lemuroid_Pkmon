@@ -30,6 +30,7 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit, onReadLiveSave: () -> ByteArray
     var inspection by remember { mutableStateOf<EmeraldSaveInspector.Inspection?>(null) }
     var selected by remember { mutableStateOf(setOf<Int>()) }
     var evMode by remember { mutableStateOf(0) }
+    // Gen III EV order: HP, Attack, Defense, Speed, Sp. Attack, Sp. Defense.
     var liveSource by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf("选择128KB的游戏内存档 .sav；先备份原件。") }
     val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri: Uri? ->
@@ -106,8 +107,8 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit, onReadLiveSave: () -> ByteArray
                             runCatching {
                                 val original = requireNotNull(saveBytes)
                                 val evs = when (evMode) {
-                                    1 -> listOf(6, 252, 0, 252, 0, 0)
-                                    2 -> listOf(6, 0, 0, 252, 252, 0)
+                                    1 -> listOf(6, 252, 0, 0, 0, 252)
+                                    2 -> listOf(6, 0, 0, 252, 0, 252)
                                     3 -> listOf(0, 0, 0, 0, 0, 0)
                                     else -> null
                                 }
@@ -130,8 +131,8 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit, onReadLiveSave: () -> ByteArray
                             runCatching {
                                 val source = requireNotNull(saveBytes)
                                 val evs = when (evMode) {
-                                    1 -> listOf(6, 252, 0, 252, 0, 0)
-                                    2 -> listOf(6, 0, 0, 252, 252, 0)
+                                    1 -> listOf(6, 252, 0, 0, 0, 252)
+                                    2 -> listOf(6, 0, 0, 252, 0, 252)
                                     3 -> listOf(0, 0, 0, 0, 0, 0)
                                     else -> null
                                 }
