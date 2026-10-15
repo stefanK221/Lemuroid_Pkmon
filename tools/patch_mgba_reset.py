@@ -38,9 +38,16 @@ def patch(root):
     old_glob = "file(GLOB RETRO_SRC ${CMAKE_CURRENT_SOURCE_DIR}/src/platform/libretro/*.c)"
     if source.count(old_glob) != 1:
         raise RuntimeError("Unexpected libretro CMake source list")
-    cmake.write_text(source.replace(old_glob,
-        "set(RETRO_SRC ${CMAKE_CURRENT_SOURCE_DIR}/src/platform/libretro/libretro.c)"),
-        encoding="utf-8")
+    source = source.replace(old_glob,
+        "set(RETRO_SRC ${CMAKE_CURRENT_SOURCE_DIR}/src/platform/libretro/libretro.c)")
+    # The libretro target enables file-backed VFS but omits VFS_SRC; include
+    # its FD implementation without enabling directory-dependent features.
+    old_target = "add_library(${BINARY_NAME}_libretro SHARED ${CORE_SRC} ${RETRO_SRC} ${CORE_VFS_SRC})"
+    if source.count(old_target) != 1:
+        raise RuntimeError("Unexpected libretro target sources")
+    source = source.replace(old_target, old_target[:-1] +
+        " ${CMAKE_CURRENT_SOURCE_DIR}/src/util/vfs/vfs-fd.c)")
+    cmake.write_text(source, encoding="utf-8")
 
 if __name__ == "__main__":
     patch(sys.argv[1])

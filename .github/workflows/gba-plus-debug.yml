@@ -35,7 +35,9 @@ jobs:
         run: |
           sdkmanager_path="${ANDROID_HOME:-/usr/local/lib/android/sdk}/cmdline-tools/latest/bin/sdkmanager"
           test -x "$sdkmanager_path"
-          "$sdkmanager_path" 'ndk;27.2.12479018'
+          if ! test -f "${ANDROID_HOME:-/usr/local/lib/android/sdk}/ndk/27.2.12479018/build/cmake/android.toolchain.cmake"; then
+            "$sdkmanager_path" 'ndk;27.2.12479018'
+          fi
       - name: Test ROM patch restoration and rebuild mGBA
         run: bash tools/build_mgba_fixed.sh
       - name: Check preinstalled Android SDK
