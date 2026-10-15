@@ -61,8 +61,28 @@ fun CheatManagerDialog(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text("金手指启用后可以尝试关闭；请先备份存档。某些代码的效果可能持续到重启或重新进入地图。")
+                Text("金手指可能改变游戏内存；即使停止执行，穿墙等效果仍可能持续。请先备份存档。")
                 Text("已保存金手指（${entries.size}）")
+                if (entries.any { it.enabled }) {
+                    Button(onClick = {
+                        runCatching {
+                            entries.forEachIndexed { index, item ->
+                                if (item.enabled) {
+                                    onApplyCheat(index, false, item.code)
+                                    store.setEnabled(gameId, item.id, false)
+                                    potentiallyActive = potentiallyActive + item.id
+                                }
+                            }
+                            entries = store.read(gameId)
+                            needsRestart = true
+                            error = null
+                        }.onFailure {
+                            entries = store.read(gameId)
+                            error = "批量关闭失败，部分代码可能仍在运行：${it.message}"
+                        }
+                    }) { Text("关闭全部（可能需重启）") }
+                }
+
                 if (entries.isEmpty()) Text("暂无金手指，点击下方「新增代码」。")
                 entries.forEachIndexed { index, item ->
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -88,7 +108,7 @@ fun CheatManagerDialog(
                                 error = null
                             }.onFailure { error = "操作失败：${it.message ?: it.javaClass.simpleName}" }
                         }) { Text(if (item.enabled) "关闭" else "启用") }
-                        TextButton(enabled = entries.none { it.enabled }, onClick = {
+                        TextButton(enabled = entries.none { it.enabled } && potentiallyActive.isEmpty(), onClick = {
                             runCatching {
                                 store.delete(gameId, item.id)
                                 entries = store.read(gameId)
