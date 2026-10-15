@@ -1,5 +1,6 @@
 # GBA Plus implementation status
 
+> **历史文件，请勿当作当前发布状态（2026-10-16 提醒）**：下文反映早期开发阶段，其中有关“未接入金手指/未编译 APK”的描述已过时。当前唯一持续维护的状态为 [需求路线图](docs/GBA_PLUS_ROADMAP.md)，并参见 [每次更新记录](docs/GBA_PLUS_CHANGELOG.md) 与 [常见故障](docs/GBA_PLUS_KNOWN_ISSUES.md)。\n\n
 This fork aims to keep Lemuroid's UI and mGBA-compatible GBA playback while adding a cheat manager.
 
 ## Implemented in this branch
