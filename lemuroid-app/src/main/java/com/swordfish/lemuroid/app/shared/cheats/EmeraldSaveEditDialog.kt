@@ -29,6 +29,7 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit) {
     var pendingExport by remember { mutableStateOf<ByteArray?>(null) }
     var inspection by remember { mutableStateOf<EmeraldSaveInspector.Inspection?>(null) }
     var selected by remember { mutableStateOf(setOf<Int>()) }
+    var evMode by remember { mutableStateOf(0) }
     var message by remember { mutableStateOf("选择128KB的游戏内存档 .sav；先备份原件。") }
     val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri: Uri? ->
         if (uri != null) {
@@ -61,7 +62,7 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit) {
     }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("宝可梦6V存档工具（实验功能）") },
+        title = { Text("宝可梦6V / 努力值工具（实验功能）") },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 Text(message)
@@ -69,6 +70,12 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit) {
                     Text("选择 .sav 文件")
                 }
                 inspection?.let { info ->
+                    Text("努力值方案（仅修改选中的队伍成员）")
+                    listOf("保持原样", "攻击252 / 速度252 / HP6", "特攻252 / 速度252 / HP6", "全部清零").forEachIndexed { index, label ->
+                        TextButton(onClick = { evMode = index }) {
+                            Text((if (evMode == index) "✓ " else "") + label)
+                        }
+                    }
                     Text("存档序号：${info.sequence}")
                     (1..info.partyCount).forEach { position ->
                         Row(modifier = Modifier.padding(vertical = 2.dp)) {
@@ -78,7 +85,7 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit) {
                                     selected = if (enabled) selected + position else selected - position
                                 },
                             )
-                            Text("队伍第${position}只：${info.partyIvs[position - 1].joinToString("/")}")
+                            Text("队伍第${position}只 IV：${info.partyIvs[position - 1].joinToString("/")}; EV：${info.partyEvs[position - 1].joinToString("/")}")
                         }
                     }
                     Button(
@@ -86,7 +93,13 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit) {
                         onClick = {
                             runCatching {
                                 val source = requireNotNull(saveBytes)
-                                pendingExport = EmeraldSixVPatcher.apply(source, selected)
+                                val evs = when (evMode) {
+                                    1 -> listOf(6, 252, 0, 0, 0, 252)
+                                    2 -> listOf(6, 0, 0, 252, 0, 252)
+                                    3 -> listOf(0, 0, 0, 0, 0, 0)
+                                    else -> null
+                                }
+                                pendingExport = EmeraldSixVPatcher.apply(source, selected, evs)
                             }.onSuccess { export.launch("pokemon_6v_test.sav") }
                                 .onFailure { message = "修改验证失败，未创建文件：${it.message}" }
                         },
