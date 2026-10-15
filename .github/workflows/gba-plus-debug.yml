@@ -32,7 +32,10 @@ jobs:
           ref: c758314a639aa0066e7b65a8341448181b73c804
           path: work/mgba-native
       - name: Install Android NDK for the repaired core
-        run: sdkmanager 'ndk;27.2.12479018'
+        run: |
+          sdkmanager_path="${ANDROID_HOME:-/usr/local/lib/android/sdk}/cmdline-tools/latest/bin/sdkmanager"
+          test -x "$sdkmanager_path"
+          "$sdkmanager_path" 'ndk;27.2.12479018'
       - name: Test ROM patch restoration and rebuild mGBA
         run: bash tools/build_mgba_fixed.sh
       - name: Check preinstalled Android SDK
