@@ -22,8 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 /**
- * Reusable cheat-entry editor. It intentionally does NOT suggest enabled entries are applied
- * to the running emulator: the LibretroDroid native bridge is still required.
+ * Per-game cheat editor. Applying cheats is delegated to the active GLRetroView.
  */
 @Composable
 fun CheatManagerDialog(
@@ -31,6 +30,7 @@ fun CheatManagerDialog(
     store: CheatStore,
     onDismiss: () -> Unit,
     onOpenSaveEditor: () -> Unit,
+    onApplyCheat: (Int, Boolean, String) -> Unit,
 ) {
     var entries by remember(gameId) { mutableStateOf(store.read(gameId)) }
     var title by remember { mutableStateOf("") }
@@ -40,13 +40,13 @@ fun CheatManagerDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("金手指管理（尚未接入游戏核心）") },
+        title = { Text("金手指管理（测试版）") },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text("目前仅支持记录作弊码，尚不能在游戏中生效。")
+                Text("开关将代码提交给当前游戏核心；是否生效取决于核心及代码格式。使用前请备份存档。")
                 Button(onClick = onOpenSaveEditor) { Text("打开6V存档编辑器") }
                 OutlinedTextField(
                     value = title,
@@ -79,21 +79,31 @@ fun CheatManagerDialog(
                             error = null
                         }.onFailure { error = it.message ?: "无法保存代码" }
                     },
-                ) { Text("保存代码（尚不能生效）") }
-                entries.forEach { item ->
+                ) { Text("保存代码") }
+                entries.forEachIndexed { index, item ->
                     Row(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(item.title)
                             Text(item.format.name)
                         }
                         Switch(
-                            checked = false,
-                            enabled = false,
-                            onCheckedChange = null,
+                            checked = item.enabled,
+                            onCheckedChange = { enabled ->
+                                runCatching {
+                                    onApplyCheat(index, enabled, item.code)
+                                    store.setEnabled(gameId, item.id, enabled)
+                                    entries = store.read(gameId)
+                                    error = null
+                                }.onFailure { error = "金手指应用失败：${it.message}" }
+                            },
                         )
                         TextButton(onClick = {
-                            store.delete(gameId, item.id)
-                            entries = store.read(gameId)
+                            runCatching {
+                                if (item.enabled) onApplyCheat(index, false, item.code)
+                                store.delete(gameId, item.id)
+                                entries = store.read(gameId)
+                                error = null
+                            }.onFailure { error = "删除失败：${it.message}" }
                         }) { Text("删除") }
                     }
                 }
