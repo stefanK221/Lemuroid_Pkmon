@@ -127,8 +127,8 @@ fun QuickToolsDialog(
                     }
                 }
                 Text("已选：${QuickToolsProfile.namedSpecies[selected] ?: "全国图鉴第${QuickToolsProfile.internalToNational[selected] ?: "未知"}号"}")
-                Button(enabled = profile != null, onClick = {
-                    val id = selected
+                Button(enabled = profile != null && (number == null || QuickToolsProfile.nationalToInternal[number] != null), onClick = {
+                    val id = if (number != null) requireNotNull(QuickToolsProfile.nationalToInternal[number]) else selected
                     confirmation = "将新增${QuickToolsProfile.namedSpecies[id] ?: "内部编号 $id"}到第一个空盒位。会先备份并重启游戏，未保存的进度会丢失。已在游戏内保存后再执行。"
                     action = {
                         val verified = requireNotNull(profile)
