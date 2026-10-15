@@ -39,6 +39,7 @@ fun CheatManagerDialog(
     var error by remember { mutableStateOf<String?>(null) }
     var needsRestart by remember { mutableStateOf(false) }
     var confirmExit by remember { mutableStateOf(false) }
+    var showAddForm by remember { mutableStateOf(false) }
 
     if (confirmExit) {
         AlertDialog(
@@ -60,7 +61,36 @@ fun CheatManagerDialog(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text("金手指启用后可以尝试关闭；请先备份存档。某些代码的效果可能持续到重启或重新进入地图。")
-                Button(onClick = onOpenSaveEditor) { Text("打开6V存档编辑器") }
+                Text("已保存金手指（${entries.size}）")
+                if (entries.isEmpty()) Text("暂无金手指，点击下方「新增代码」。")
+                entries.forEachIndexed { index, item ->
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(item.title)
+                            Text(if (item.enabled) "运行中 · ${item.format.name}" else item.format.name)
+                        }
+                        Button(onClick = {
+                            runCatching {
+                                onApplyCheat(index, !item.enabled, item.code)
+                                store.setEnabled(gameId, item.id, !item.enabled)
+                                if (item.enabled) needsRestart = true
+                                entries = store.read(gameId)
+                                error = null
+                            }.onFailure { error = "操作失败：${it.message ?: it.javaClass.simpleName}" }
+                        }) { Text(if (item.enabled) "关闭" else "启用") }
+                        TextButton(enabled = entries.none { it.enabled }, onClick = {
+                            runCatching {
+                                store.delete(gameId, item.id)
+                                entries = store.read(gameId)
+                                error = null
+                            }.onFailure { error = "删除失败：${it.message}" }
+                        }) { Text("删除") }
+                    }
+                }
+                Button(onClick = { showAddForm = !showAddForm }) {
+                    Text(if (showAddForm) "收起新增代码" else "＋ 新增代码")
+                }
+                if (showAddForm) {
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
@@ -77,10 +107,12 @@ fun CheatManagerDialog(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf(CheatFormat.CODE_BREAKER, CheatFormat.GAME_SHARK).forEach { option ->
                         TextButton(onClick = { format = option }) {
-                            Text(if (format == option) "✓ ${option.name}" else option.name)
+                            Text(if (format == option) "✓ " + (if (option == CheatFormat.CODE_BREAKER) "CodeBreaker" else "GameShark") else if (option == CheatFormat.CODE_BREAKER) "CodeBreaker" else "GameShark")
                         }
                     }
                 }
+                }
+                Button(onClick = onOpenSaveEditor) { Text("打开6V存档编辑器") }
                 if (error != null) Text(error!!)
                 if (needsRestart) {
                     Text("⚠️ 已向核心发送关闭指令，但穿墙等内存效果可能持续。彻底关闭需要退出并重新进入游戏。")
@@ -98,34 +130,7 @@ fun CheatManagerDialog(
                         }.onFailure { error = it.message ?: "无法保存代码" }
                     },
                 ) { Text("保存代码") }
-                entries.forEachIndexed { index, item ->
-                    Row(modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(item.title)
-                            Text(item.format.name)
-                        }
-                        Button(
-                            onClick = {
-                                runCatching {
-                                    onApplyCheat(index, !item.enabled, item.code)
-                                    store.setEnabled(gameId, item.id, !item.enabled)
-                                    if (item.enabled) needsRestart = true
-                                    entries = store.read(gameId)
-                                    error = null
-                                }.onFailure {
-                                    error = "操作失败：${it.message ?: it.javaClass.simpleName}"
-                                }
-                            },
-                        ) { Text(if (item.enabled) "关闭" else "启用") }
-                        TextButton(enabled = entries.none { it.enabled }, onClick = {
-                            runCatching {
-                                store.delete(gameId, item.id)
-                                entries = store.read(gameId)
-                                error = null
-                            }.onFailure { error = "删除失败：${it.message}" }
-                        }) { Text("删除") }
-                    }
-                }
+
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("关闭") } },
