@@ -23,6 +23,7 @@ import androidx.compose.runtime.setValue
 import com.swordfish.lemuroid.app.shared.cheats.CheatManagerDialog
 import com.swordfish.lemuroid.app.shared.cheats.CheatStore
 import com.swordfish.lemuroid.app.shared.cheats.EmeraldSaveEditDialog
+import com.swordfish.lemuroid.app.shared.cheats.QuickToolsDialog
 import androidx.activity.viewModels
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.Lifecycle
@@ -104,6 +105,14 @@ abstract class BaseGameActivity : ImmersiveActivity() {
 
     private val startGameTime = System.currentTimeMillis()
     private var finishTriggered = false
+    private var quickToolFlags = 0
+
+    private fun setQuickToolFlags(flags: Int) {
+        require(flags in 0..3)
+        val view = requireNotNull(baseGameScreenViewModel.retroGameView.retroGameView) { "请等待游戏加载完成" }
+        view.setCheat(10000, true, "GBA_PLUS_QUICK_V1:$flags", false)
+        quickToolFlags = flags
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -145,6 +154,7 @@ abstract class BaseGameActivity : ImmersiveActivity() {
             AppTheme {
                 var showCheatManager by remember { mutableStateOf(false) }
                 var showSaveEditor by remember { mutableStateOf(false) }
+                var showQuickTools by remember { mutableStateOf(false) }
                 Box(modifier = Modifier.fillMaxSize()) {
                     BaseGameScreen(viewModel = baseGameScreenViewModel) {
                         GameScreen(viewModel)
@@ -154,6 +164,20 @@ abstract class BaseGameActivity : ImmersiveActivity() {
                             modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
                             onClick = { showCheatManager = true },
                         ) { Text("金手指") }
+                    }
+                    if (showQuickTools) {
+                        QuickToolsDialog(
+                            fileName = game.fileName,
+                            onDismiss = { showQuickTools = false },
+                            onReadSave = { requireNotNull(baseGameScreenViewModel.retroGameView.retroGameView).serializeSRAM() },
+                            onApplySave = { bytes ->
+                                val view = requireNotNull(baseGameScreenViewModel.retroGameView.retroGameView)
+                                check(view.unserializeSRAM(bytes)) { "核心拒绝新存档" }
+                                view.reset()
+                            },
+                            onGetFlags = { quickToolFlags },
+                            onSetFlags = { setQuickToolFlags(it) },
+                        )
                     }
                     if (showSaveEditor) {
                         EmeraldSaveEditDialog(
@@ -179,6 +203,7 @@ abstract class BaseGameActivity : ImmersiveActivity() {
                                     "请等待游戏加载完成"
                                 }
                                 LibretroDroid.resetCheat()
+                                quickToolFlags = 0
                             },
                             onApplyCheat = { index, enabled, code ->
                                 val activeView = requireNotNull(baseGameScreenViewModel.retroGameView.retroGameView) {
@@ -201,6 +226,7 @@ abstract class BaseGameActivity : ImmersiveActivity() {
                                             )
                                         }
                                     }
+                                    setQuickToolFlags(quickToolFlags)
                                 }
                                 val revised = storedCheats.mapIndexed { i, item ->
                                     if (i == index) item.copy(enabled = enabled) else item
@@ -222,6 +248,10 @@ abstract class BaseGameActivity : ImmersiveActivity() {
                             onOpenSaveEditor = {
                                 showCheatManager = false
                                 showSaveEditor = true
+                            },
+                            onOpenQuickTools = {
+                                showCheatManager = false
+                                showQuickTools = true
                             },
                             onDismiss = { showCheatManager = false },
                         )

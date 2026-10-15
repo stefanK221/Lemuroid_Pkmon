@@ -25,6 +25,10 @@ if test "$legacy_status" -ne 1; then
     exit 1
 fi
 "$build_root/test-reset"
+cc -std=c11 -D_GNU_SOURCE -DENABLE_VFS -DENABLE_DIRECTORIES \
+   -I "$source_dir/include" -I "$build_root/host/include" \
+   "$repo_root/tools/test_mgba_quick_tools.c" -o "$build_root/test-quick-tools"
+"$build_root/test-quick-tools"
 ndk_dir="${ANDROID_HOME}/ndk/27.2.12479018"
 for abi in arm64-v8a armeabi-v7a x86 x86_64; do
     cmake -S "$source_dir" -B "$build_root/$abi" "${common[@]}" \

@@ -19,9 +19,27 @@ def patch(root):
     if source.count(version_globals) != 1:
         raise RuntimeError("Unexpected libretro version globals")
     source = source.replace(version_globals, "")
-    target.write_text(source.replace(old, new), encoding="utf-8")
+    source = source.replace(old, new)
+    # Quick features use a separate typed command, not unverified hex codes.
+    anchors = {
+        'void retro_run(void) {': 'void retro_run(void) {\n\tgbaPlusQuickFrame(core);',
+        'void retro_unload_game(void) {': 'void retro_unload_game(void) {\n\tgbaPlusQuickReset();',
+        'bool retro_load_game(const struct retro_game_info* game) {':
+            'bool retro_load_game(const struct retro_game_info* game) {\n\tgbaPlusQuickReset();',
+        'void retro_cheat_reset(void) {': 'void retro_cheat_reset(void) {\n\tgbaPlusQuickReset();',
+        'void retro_cheat_set(unsigned index, bool enabled, const char* code) {':
+            'void retro_cheat_set(unsigned index, bool enabled, const char* code) {\n\tif (gbaPlusQuickCommand(code)) return;',
+    }
+    for anchor, replacement in anchors.items():
+        if source.count(anchor) != 1:
+            raise RuntimeError('Unexpected quick-tools hook: ' + anchor)
+        source = source.replace(anchor, replacement)
+    source = '#include "gba_plus_quick_tools.h"\n' + source
+    target.write_text(source, encoding="utf-8")
     shutil.copyfile(Path(__file__).with_name("mgba_cheat_reset.h"),
                     target.with_name("gba_plus_cheat_reset.h"))
+    shutil.copyfile(Path(__file__).with_name("mgba_quick_tools.h"),
+                    target.with_name("gba_plus_quick_tools.h"))
     # This pinned upstream revision accidentally includes scripting.c in the
     # unconditional core list as well as CORE_SCRIPT. Libretro disables
     # scripting and directories, so compiling it there is invalid.
@@ -51,4 +69,3 @@ def patch(root):
 
 if __name__ == "__main__":
     patch(sys.argv[1])
-

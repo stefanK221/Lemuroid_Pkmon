@@ -1,7 +1,7 @@
 name: GBA save editor tests
 on:
   push:
-    branches: [feature/gba-plus-foundation]
+    branches: [feature/gba-plus-foundation, feature/gba-plus-quick-tools]
   pull_request:
     branches: [master]
   workflow_dispatch:

@@ -29,6 +29,7 @@ fun CheatManagerDialog(
     store: CheatStore,
     onDismiss: () -> Unit,
     onOpenSaveEditor: () -> Unit,
+    onOpenQuickTools: () -> Unit,
     onApplyCheat: (Int, Boolean, String) -> Unit,
     onClearAllCheats: () -> Unit,
     onExitGame: () -> Unit,
@@ -78,6 +79,7 @@ fun CheatManagerDialog(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text("金手指可能改变游戏内存；即使停止执行，穿墙等效果仍可能持续。请先备份存档。")
+                Button(onClick = onOpenQuickTools) { Text("常用功能：金钱 / 大师球 / 指定精灵") }
                 Text("已保存金手指（${entries.size}）")
                 if (entries.any { it.enabled }) {
                     Button(onClick = {
