@@ -94,8 +94,8 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit) {
                             runCatching {
                                 val source = requireNotNull(saveBytes)
                                 val evs = when (evMode) {
-                                    1 -> listOf(6, 252, 0, 0, 0, 252)
-                                    2 -> listOf(6, 0, 0, 252, 0, 252)
+                                    1 -> listOf(6, 252, 0, 252, 0, 0)
+                                    2 -> listOf(6, 0, 0, 252, 252, 0)
                                     3 -> listOf(0, 0, 0, 0, 0, 0)
                                     else -> null
                                 }
