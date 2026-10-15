@@ -11,6 +11,7 @@ data class CheatEntry(
     val code: String,
     val format: CheatFormat,
     val enabled: Boolean = false,
+    val favorite: Boolean = false,
 )
 
 enum class CheatFormat {
