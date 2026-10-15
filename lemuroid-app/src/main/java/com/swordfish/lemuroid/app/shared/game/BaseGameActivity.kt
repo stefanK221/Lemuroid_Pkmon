@@ -8,6 +8,20 @@ import android.view.KeyEvent
 import android.view.MotionEvent
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import com.swordfish.lemuroid.app.shared.cheats.CheatManagerDialog
+import com.swordfish.lemuroid.app.shared.cheats.CheatStore
 import androidx.activity.viewModels
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.Lifecycle
@@ -121,8 +135,24 @@ abstract class BaseGameActivity : ImmersiveActivity() {
 
         setContent {
             AppTheme {
-                BaseGameScreen(viewModel = baseGameScreenViewModel) {
-                    GameScreen(viewModel)
+                var showCheatManager by remember { mutableStateOf(false) }
+                Box(modifier = Modifier.fillMaxSize()) {
+                    BaseGameScreen(viewModel = baseGameScreenViewModel) {
+                        GameScreen(viewModel)
+                    }
+                    if (system.id == "GBA") {
+                        TextButton(
+                            modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
+                            onClick = { showCheatManager = true },
+                        ) { Text("金手指") }
+                    }
+                    if (showCheatManager) {
+                        CheatManagerDialog(
+                            gameId = game.id.toString(),
+                            store = remember { CheatStore(applicationContext) },
+                            onDismiss = { showCheatManager = false },
+                        )
+                    }
                 }
             }
         }
