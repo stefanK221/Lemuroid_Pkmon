@@ -30,6 +30,7 @@ fun CheatManagerDialog(
     onDismiss: () -> Unit,
     onOpenSaveEditor: () -> Unit,
     onApplyCheat: (Int, Boolean, String) -> Unit,
+    onClearAllCheats: () -> Unit,
     onExitGame: () -> Unit,
 ) {
     var entries by remember(gameId) { mutableStateOf(store.read(gameId)) }
@@ -51,11 +52,9 @@ fun CheatManagerDialog(
             confirmButton = {
                 TextButton(onClick = {
                     runCatching {
-                        entries.forEachIndexed { index, item ->
-                            if (item.enabled) {
-                                onApplyCheat(index, false, item.code)
-                                store.setEnabled(gameId, item.id, false)
-                            }
+                        onClearAllCheats()
+                        entries.filter { it.enabled }.forEach { item ->
+                            store.setEnabled(gameId, item.id, false)
                         }
                         entries = store.read(gameId)
                         confirmExit = false
@@ -83,13 +82,11 @@ fun CheatManagerDialog(
                 if (entries.any { it.enabled }) {
                     Button(onClick = {
                         runCatching {
-                            entries.forEachIndexed { index, item ->
-                                if (item.enabled) {
-                                    onApplyCheat(index, false, item.code)
-                                    store.setEnabled(gameId, item.id, false)
-                                    potentiallyActive = potentiallyActive + item.id
-                                    lastDisabledIds = lastDisabledIds + item.id
-                                }
+                            onClearAllCheats()
+                            entries.filter { it.enabled }.forEach { item ->
+                                store.setEnabled(gameId, item.id, false)
+                                potentiallyActive = potentiallyActive + item.id
+                                lastDisabledIds = lastDisabledIds + item.id
                             }
                             entries = store.read(gameId)
                             needsRestart = true
