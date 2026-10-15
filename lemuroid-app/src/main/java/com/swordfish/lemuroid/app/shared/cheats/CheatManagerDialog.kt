@@ -57,9 +57,7 @@ fun CheatManagerDialog(
                 TextButton(onClick = {
                     runCatching {
                         onClearAllCheats()
-                        entries.filter { it.enabled }.forEach { item ->
-                            store.setEnabled(gameId, item.id, false)
-                        }
+                        store.disableAll(gameId)
                         entries = store.read(gameId)
                         confirmExit = false
                         onExitGame()
@@ -98,11 +96,10 @@ fun CheatManagerDialog(
                     Button(onClick = {
                         runCatching {
                             onClearAllCheats()
-                            entries.filter { it.enabled }.forEach { item ->
-                                store.setEnabled(gameId, item.id, false)
-                                potentiallyActive = potentiallyActive + item.id
-                                lastDisabledIds = lastDisabledIds + item.id
-                            }
+                            val disabledIds = entries.filter { it.enabled }.map { it.id }.toSet()
+                            store.disableAll(gameId)
+                            potentiallyActive = potentiallyActive + disabledIds
+                            lastDisabledIds = lastDisabledIds + disabledIds
                             entries = store.read(gameId)
                             needsRestart = true
                             error = null
