@@ -13,7 +13,9 @@ object EmeraldSaveInspector {
         3884, 3968, 3968, 3968, 3848, 3968, 3968,
         3968, 3968, 3968, 3968, 3968, 3968, 2000,
     )
-    data class Inspection(val sequence: Long, val partyCount: Int, val partyIvs: List<List<Int>>, val activeSlot: Int, val partyEvs: List<List<Int>>, val partyLevels: List<Int>)
+    data class Inspection(val sequence: Long, val partyCount: Int, val partyIvs: List<List<Int>>, val activeSlot: Int, val partyEvs: List<List<Int>>, val partyLevels: List<Int>, val partySpecies: List<Int>)
+
+    private data class PartyStats(val ivs: List<Int>, val evs: List<Int>, val level: Int, val species: Int)
 
     private fun uint16(b: ByteArray, i: Int): Int =
         (b[i].toInt() and 255) or ((b[i + 1].toInt() and 255) shl 8)
@@ -82,13 +84,15 @@ object EmeraldSaveInspector {
                 else remaining.forEach { generate(prefix + it, remaining - it) }
             }
             generate(emptyList(), listOf(0, 1, 2, 3))
+            val growthBlock = permutations[(personality % 24).toInt()].indexOf(0)
+            val species = uint16(plain, growthBlock * 12)
             val effortBlock = permutations[(personality % 24).toInt()].indexOf(2)
             val evs = (0 until 6).map { plain[effortBlock * 12 + it].toInt() and 255 }
             val miscBlock = permutations[(personality % 24).toInt()].indexOf(3)
             val field = uint32(plain, miscBlock * 12 + 4)
             val ivs = (0 until 6).map { ((field ushr (it * 5)) and 31).toInt() }
-            Triple(ivs, evs, bytes[start + 84].toInt() and 255)
+            PartyStats(ivs, evs, bytes[start + 84].toInt() and 255, species)
         }
-        return Inspection(sequence, count, partyStats.map { it.first }, activeSlot, partyStats.map { it.second }, partyStats.map { it.third })
+        return Inspection(sequence, count, partyStats.map { it.ivs }, activeSlot, partyStats.map { it.evs }, partyStats.map { it.level }, partyStats.map { it.species })
     }
 }
