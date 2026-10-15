@@ -194,6 +194,10 @@ abstract class BaseGameActivity : ImmersiveActivity() {
                                     throw cause
                                 }
                             },
+                            onExitGame = {
+                                showCheatManager = false
+                                baseGameScreenViewModel.requestFinish()
+                            },
                             onOpenSaveEditor = {
                                 showCheatManager = false
                                 showSaveEditor = true
