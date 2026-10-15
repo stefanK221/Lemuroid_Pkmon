@@ -44,7 +44,7 @@ fun CheatManagerDialog(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text("当前只能保存代码。开关记录的是设置，不会改变游戏内容。")
+                Text("目前仅支持记录作弊码，尚不能在游戏中生效。为避免误操作，运行开关暂时锁定。")
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
@@ -76,11 +76,9 @@ fun CheatManagerDialog(
                             Text(item.format.name)
                         }
                         Switch(
-                            checked = item.enabled,
-                            onCheckedChange = {
-                                store.setEnabled(gameId, item.id, it)
-                                entries = store.read(gameId)
-                            },
+                            checked = false,
+                            enabled = false,
+                            onCheckedChange = null,
                         )
                         TextButton(onClick = {
                             store.delete(gameId, item.id)
