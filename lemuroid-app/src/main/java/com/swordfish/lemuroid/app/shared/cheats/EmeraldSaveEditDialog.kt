@@ -60,8 +60,8 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit, onReadLiveSave: () -> ByteArray
                 liveSource = false
                 saveBytes = raw
                 inspection = parsed
-                selected = (1..parsed.partyCount).toSet()
-                message = "已验证存档，队伍共有${parsed.partyCount}只。可选需要修改的成员。"
+                selected = if (parsed.partyCount > 0) setOf(1) else emptySet()
+                message = "已验证存档，队伍共有${parsed.partyCount}只。默认只选中第一只，其他成员需手动勾选。"
             }.onFailure {
                 saveBytes = null
                 inspection = null
@@ -83,9 +83,9 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit, onReadLiveSave: () -> ByteArray
                         val parsed = EmeraldSaveInspector.inspect(raw)
                         saveBytes = raw
                         inspection = parsed
-                        selected = (1..parsed.partyCount).toSet()
+                        selected = if (parsed.partyCount > 0) setOf(1) else emptySet()
                         liveSource = true
-                        message = "已读取当前游戏存档。请先在游戏中正常保存；修改将重置游戏。"
+                        message = "已读取当前存档。默认只选中第一只；请先在游戏中保存，修改会重启游戏。"
                     }.onFailure {
                         saveBytes = null
                         inspection = null
@@ -161,7 +161,7 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit, onReadLiveSave: () -> ByteArray
                                     selected = if (enabled) selected + position else selected - position
                                 },
                             )
-                            Text("队伍第${position}只 IV：${info.partyIvs[position - 1].joinToString("/")}; EV：${info.partyEvs[position - 1].joinToString("/")}")
+                            Text("队伍第${position}只 · Lv.${info.partyLevels[position - 1]} IV：${info.partyIvs[position - 1].joinToString("/")}; EV：${info.partyEvs[position - 1].joinToString("/")}")
                         }
                     }
                     if (liveSource) {
