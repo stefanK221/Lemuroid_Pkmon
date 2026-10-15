@@ -95,40 +95,19 @@ fun QuickToolsDialog(
                         .onFailure { message = "关闭失败：${it.message}" }
                 }) { Text("关闭两个持续功能") }
                 Text("获取指定精灵：加入电脑空盒位，不替换队伍。Lv.1、6V、招式撞击；不自动补图鉴记录。先在游戏内保存，执行后重启游戏。")
-                OutlinedTextField(
-                    value = search,
-                    onValueChange = { search = it },
-                    label = { Text("输入全国图鉴编号或搜索名称") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                )
-                val number = search.trim().toIntOrNull()
-                val available = QuickToolsProfile.namedSpecies.entries.filter { (id, name) ->
-                    val dex = QuickToolsProfile.internalToNational[id]
-                    search.isBlank() || (number == null && name.contains(search)) || dex == number
-                }
-                val candidates = if (number != null) {
-                    val internal = QuickToolsProfile.nationalToInternal[number]
-                    if (internal != null) {
-                        listOf(internal to (QuickToolsProfile.namedSpecies[internal] ?: "全国图鉴第${number}号"))
-                    } else {
-                        emptyList()
-                    }
-                } else {
-                    available.take(8).map { it.key to it.value }
-                }
-                if (candidates.isEmpty()) {
-                    Text("该全国图鉴编号尚未建立对应关系，为防止领取错误精灵，暂不支持此编号。")
-                }
+                OutlinedTextField(value = search, onValueChange = { search = it }, label = { Text("搜索名称或内部编号") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                val number = search.toIntOrNull()
+                val known = QuickToolsProfile.namedSpecies.filter { (id, name) -> search.isBlank() || name.contains(search) || id.toString() == search }
+                val candidates = if (number != null && (number in 1..251 || number in 277..411)) {
+                    listOf(number to (QuickToolsProfile.namedSpecies[number] ?: "精灵（内部编号 $number）"))
+                } else known.entries.take(8).map { it.key to it.value }
+                if (candidates.isEmpty()) Text("暂无此名称。可输入本版本内部编号：1–251、277–411（不是全国图鉴编号）。")
                 candidates.forEach { (id, name) ->
-                    val dex = QuickToolsProfile.internalToNational[id]
-                    TextButton(onClick = { selected = id }) {
-                        Text((if (selected == id) "✓ " else "") + "$name · 图鉴№${dex ?: "待核对"}")
-                    }
+                    TextButton(onClick = { selected = id }) { Text((if (selected == id) "✓ " else "") + "$name · $id") }
                 }
-                Text("已选：${QuickToolsProfile.namedSpecies[selected] ?: "全国图鉴第${QuickToolsProfile.internalToNational[selected] ?: "未知"}号"}")
-                Button(enabled = profile != null && (number == null || QuickToolsProfile.nationalToInternal[number] != null), onClick = {
-                    val id = if (number != null) requireNotNull(QuickToolsProfile.nationalToInternal[number]) else selected
+                Text("已选：${QuickToolsProfile.namedSpecies[selected] ?: "内部编号 $selected"}")
+                Button(enabled = profile != null, onClick = {
+                    val id = selected
                     confirmation = "将新增${QuickToolsProfile.namedSpecies[id] ?: "内部编号 $id"}到第一个空盒位。会先备份并重启游戏，未保存的进度会丢失。已在游戏内保存后再执行。"
                     action = {
                         val verified = requireNotNull(profile)
