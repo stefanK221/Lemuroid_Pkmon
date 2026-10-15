@@ -45,6 +45,7 @@ fun CheatManagerDialog(
     var editingId by remember(gameId) { mutableStateOf<String?>(null) }
     var filterText by remember(gameId) { mutableStateOf("") }
     var showEnabledOnly by remember(gameId) { mutableStateOf(false) }
+    var formatFilter by remember(gameId) { mutableStateOf<CheatFormat?>(null) }
     var potentiallyActive by remember(gameId) { mutableStateOf(setOf<String>()) }
     var lastDisabledIds by remember(gameId) { mutableStateOf(setOf<String>()) }
 
@@ -92,6 +93,17 @@ fun CheatManagerDialog(
                 TextButton(onClick = { showEnabledOnly = !showEnabledOnly }) {
                     Text(if (showEnabledOnly) "✓ 仅看已启用（点击显示全部）" else "仅查看已启用")
                 }
+                Text("按代码类型筛选")
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TextButton(onClick = { formatFilter = null }) {
+                        Text((if (formatFilter == null) "✓ " else "") + "全部")
+                    }
+                    listOf(CheatFormat.CODE_BREAKER, CheatFormat.GAME_SHARK, CheatFormat.RAW).forEach { option ->
+                        TextButton(onClick = { formatFilter = option }) {
+                            Text((if (formatFilter == option) "✓ " else "") + option.name)
+                        }
+                    }
+                }
                 if (entries.any { it.enabled }) {
                     Button(onClick = {
                         runCatching {
@@ -113,6 +125,7 @@ fun CheatManagerDialog(
                 if (entries.isEmpty()) Text("暂无金手指，点击下方「新增代码」。")
                 val filteredEntries = entries.withIndex().filter { (_, item) ->
                     (!showEnabledOnly || item.enabled) &&
+                        (formatFilter == null || item.format == formatFilter) &&
                         (filterText.isBlank() ||
                             item.title.contains(filterText, ignoreCase = true) ||
                             item.code.contains(filterText, ignoreCase = true))
