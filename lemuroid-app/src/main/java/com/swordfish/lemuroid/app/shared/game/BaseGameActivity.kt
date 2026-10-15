@@ -8,6 +8,21 @@ import android.view.KeyEvent
 import android.view.MotionEvent
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import com.swordfish.lemuroid.app.shared.cheats.CheatManagerDialog
+import com.swordfish.lemuroid.app.shared.cheats.CheatStore
+import com.swordfish.lemuroid.app.shared.cheats.EmeraldSaveEditDialog
 import androidx.activity.viewModels
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.Lifecycle
@@ -39,6 +54,7 @@ import com.swordfish.lemuroid.lib.library.db.entity.Game
 import com.swordfish.lemuroid.lib.saves.SavesManager
 import com.swordfish.lemuroid.lib.saves.StatesManager
 import com.swordfish.lemuroid.lib.saves.StatesPreviewManager
+import com.swordfish.libretrodroid.LibretroDroid
 import com.swordfish.touchinput.radial.sensors.TiltConfiguration
 import dagger.Lazy
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -96,6 +112,12 @@ abstract class BaseGameActivity : ImmersiveActivity() {
         game = intent.getSerializableExtra(EXTRA_GAME) as Game
         systemCoreConfig = intent.getSerializableExtra(EXTRA_SYSTEM_CORE_CONFIG) as SystemCoreConfig
         system = GameSystem.findById(game.systemId)
+        if (game.systemId == "gba") {
+            val cheatStore = CheatStore(applicationContext)
+            cheatStore.read(game.id.toString()).filter { it.enabled }.forEach {
+                cheatStore.setEnabled(game.id.toString(), it.id, false)
+            }
+        }
 
         val viewModel by viewModels<BaseGameScreenViewModel> {
             BaseGameScreenViewModel.Factory(
@@ -121,8 +143,89 @@ abstract class BaseGameActivity : ImmersiveActivity() {
 
         setContent {
             AppTheme {
-                BaseGameScreen(viewModel = baseGameScreenViewModel) {
-                    GameScreen(viewModel)
+                var showCheatManager by remember { mutableStateOf(false) }
+                var showSaveEditor by remember { mutableStateOf(false) }
+                Box(modifier = Modifier.fillMaxSize()) {
+                    BaseGameScreen(viewModel = baseGameScreenViewModel) {
+                        GameScreen(viewModel)
+                    }
+                    if (game.systemId == "gba") {
+                        TextButton(
+                            modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
+                            onClick = { showCheatManager = true },
+                        ) { Text("金手指") }
+                    }
+                    if (showSaveEditor) {
+                        EmeraldSaveEditDialog(
+                            onDismiss = { showSaveEditor = false },
+                            onReadLiveSave = {
+                                val view = requireNotNull(baseGameScreenViewModel.retroGameView.retroGameView)
+                                view.serializeSRAM()
+                            },
+                            onApplyLiveSave = { patched ->
+                                val view = requireNotNull(baseGameScreenViewModel.retroGameView.retroGameView)
+                                check(view.unserializeSRAM(patched)) { "核心拒绝修改存档" }
+                                view.reset()
+                                showSaveEditor = false
+                            },
+                        )
+                    }
+                    if (showCheatManager) {
+                        CheatManagerDialog(
+                            gameId = game.id.toString(),
+                            store = remember { CheatStore(applicationContext) },
+                            onClearAllCheats = {
+                                requireNotNull(baseGameScreenViewModel.retroGameView.retroGameView) {
+                                    "请等待游戏加载完成"
+                                }
+                                LibretroDroid.resetCheat()
+                            },
+                            onApplyCheat = { index, enabled, code ->
+                                val activeView = requireNotNull(baseGameScreenViewModel.retroGameView.retroGameView) {
+                                    "请等待游戏加载完成后再启用金手指"
+                                }
+                                val storedCheats = CheatStore(applicationContext).read(game.id.toString())
+                                require(index in storedCheats.indices) { "金手指不存在，请重新打开列表" }
+                                // mGBA ignores the 'enabled' parameter in retro_cheat_set.
+                                // Clear the native list and rebuild it from the desired enabled entries.
+                                // A direct call is safe here: LibretroDroid serializes core access with coreLock.
+                                fun applySet(chosen: List<com.swordfish.lemuroid.app.shared.cheats.CheatEntry>) {
+                                    LibretroDroid.resetCheat()
+                                    chosen.forEachIndexed { codeIndex, item ->
+                                        if (item.enabled) {
+                                            activeView.setCheat(
+                                                codeIndex,
+                                                true,
+                                                item.code.lines().filter { it.isNotBlank() }.joinToString("+"),
+                                                false,
+                                            )
+                                        }
+                                    }
+                                }
+                                val revised = storedCheats.mapIndexed { i, item ->
+                                    if (i == index) item.copy(enabled = enabled) else item
+                                }
+                                try {
+                                    applySet(revised)
+                                } catch (cause: Exception) {
+                                    runCatching { applySet(storedCheats) }
+                                    throw cause
+                                }
+                            },
+                            onExitGame = {
+                                // mGBA ignores retro_cheat_set(enabled=false). Clear the
+                                // native cheat device before ending the game session.
+                                LibretroDroid.resetCheat()
+                                showCheatManager = false
+                                baseGameScreenViewModel.requestFinish()
+                            },
+                            onOpenSaveEditor = {
+                                showCheatManager = false
+                                showSaveEditor = true
+                            },
+                            onDismiss = { showCheatManager = false },
+                        )
+                    }
                 }
             }
         }
