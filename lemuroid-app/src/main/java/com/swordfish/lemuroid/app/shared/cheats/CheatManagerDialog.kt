@@ -30,6 +30,7 @@ fun CheatManagerDialog(
     gameId: String,
     store: CheatStore,
     onDismiss: () -> Unit,
+    onOpenSaveEditor: () -> Unit,
 ) {
     var entries by remember(gameId) { mutableStateOf(store.read(gameId)) }
     var title by remember { mutableStateOf("") }
@@ -44,7 +45,8 @@ fun CheatManagerDialog(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text("目前仅支持记录作弊码，尚不能在游戏中生效。为避免误操作，运行开关暂时锁定。")
+                Text("目前仅支持记录作弊码，尚不能在游戏中生效。")
+                Button(onClick = onOpenSaveEditor) { Text("打开6V存档编辑器") }
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
