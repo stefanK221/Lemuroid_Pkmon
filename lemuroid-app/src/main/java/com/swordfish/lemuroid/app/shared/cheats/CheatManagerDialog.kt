@@ -37,10 +37,11 @@ fun CheatManagerDialog(
     var code by remember { mutableStateOf("") }
     var format by remember { mutableStateOf(CheatFormat.CODE_BREAKER) }
     var error by remember { mutableStateOf<String?>(null) }
-    var needsRestart by remember { mutableStateOf(false) }
+    var needsRestart by remember(gameId) { mutableStateOf(false) }
     var confirmExit by remember { mutableStateOf(false) }
     var showAddForm by remember { mutableStateOf(false) }
     var potentiallyActive by remember(gameId) { mutableStateOf(setOf<String>()) }
+    var lastDisabledIds by remember(gameId) { mutableStateOf(setOf<String>()) }
 
     if (confirmExit) {
         AlertDialog(
@@ -87,6 +88,7 @@ fun CheatManagerDialog(
                                     onApplyCheat(index, false, item.code)
                                     store.setEnabled(gameId, item.id, false)
                                     potentiallyActive = potentiallyActive + item.id
+                                    lastDisabledIds = lastDisabledIds + item.id
                                 }
                             }
                             entries = store.read(gameId)
@@ -117,14 +119,16 @@ fun CheatManagerDialog(
                                 if (item.enabled) {
                                     needsRestart = true
                                     potentiallyActive = potentiallyActive + item.id
+                                    lastDisabledIds = lastDisabledIds + item.id
                                 } else {
                                     potentiallyActive = potentiallyActive - item.id
+                                    lastDisabledIds = lastDisabledIds - item.id
                                 }
                                 entries = store.read(gameId)
                                 error = null
                             }.onFailure { error = "操作失败：${it.message ?: it.javaClass.simpleName}" }
                         }) { Text(if (item.enabled) "关闭" else "启用") }
-                        TextButton(enabled = entries.none { it.enabled } && potentiallyActive.isEmpty(), onClick = {
+                        TextButton(enabled = entries.none { it.enabled } && potentiallyActive.isEmpty() && !needsRestart, onClick = {
                             runCatching {
                                 store.delete(gameId, item.id)
                                 entries = store.read(gameId)
@@ -171,8 +175,8 @@ fun CheatManagerDialog(
                 }
                 Button(onClick = onOpenSaveEditor) { Text("打开6V存档编辑器") }
                 if (error != null) Text(error!!)
-                if (needsRestart || potentiallyActive.isNotEmpty()) {
-                    Text("⚠️ 已向核心发送关闭指令，但穿墙等内存效果可能持续。彻底关闭需要退出并重新进入游戏。")
+                if (needsRestart || potentiallyActive.isNotEmpty() || lastDisabledIds.isNotEmpty()) {
+                    Text("⚠️ 已请求关闭金手指，但穿墙等内存效果可能持续。请在游戏内正常存档后退出并重新进入。不要加载开启金手指时制作的即时存档。")
                     Button(onClick = { confirmExit = true }) { Text("退出游戏以彻底关闭（先存档）") }
                 }
                 if (error != null) Text("操作失败时请先退出本界面，避免重复提交不确定状态的代码。")
