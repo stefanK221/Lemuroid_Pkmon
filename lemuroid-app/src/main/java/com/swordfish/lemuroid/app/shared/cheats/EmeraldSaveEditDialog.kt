@@ -26,19 +26,20 @@ import androidx.compose.ui.unit.dp
 fun EmeraldSaveEditDialog(onDismiss: () -> Unit) {
     val context = LocalContext.current
     var saveBytes by remember { mutableStateOf<ByteArray?>(null) }
+    var pendingExport by remember { mutableStateOf<ByteArray?>(null) }
     var inspection by remember { mutableStateOf<EmeraldSaveInspector.Inspection?>(null) }
     var selected by remember { mutableStateOf(setOf<Int>()) }
     var message by remember { mutableStateOf("选择128KB的游戏内存档 .sav；先备份原件。") }
     val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri: Uri? ->
         if (uri != null) {
             runCatching {
-                val source = requireNotNull(saveBytes)
-                val patched = EmeraldSixVPatcher.apply(source, selected)
+                val patched = requireNotNull(pendingExport) { "请重新选择导出" }
                 context.contentResolver.openOutputStream(uri)?.use { it.write(patched) }
                     ?: error("无法写入文件")
             }.onSuccess { message = "新的6V存档已导出；原件没有修改。" }
                 .onFailure { message = "导出失败：${it.message}" }
         }
+        pendingExport = null
     }
     val load = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri != null) {
@@ -82,7 +83,13 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit) {
                     }
                     Button(
                         enabled = selected.isNotEmpty(),
-                        onClick = { export.launch("pokemon_6v_test.sav") },
+                        onClick = {
+                            runCatching {
+                                val source = requireNotNull(saveBytes)
+                                pendingExport = EmeraldSixVPatcher.apply(source, selected)
+                            }.onSuccess { export.launch("pokemon_6v_test.sav") }
+                                .onFailure { message = "修改验证失败，未创建文件：${it.message}" }
+                        },
                     ) { Text("导出新6V存档") }
                 }
             }
