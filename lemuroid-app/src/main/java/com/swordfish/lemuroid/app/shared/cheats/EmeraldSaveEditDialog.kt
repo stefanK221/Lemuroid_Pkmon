@@ -11,6 +11,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
@@ -30,6 +34,9 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit, onReadLiveSave: () -> ByteArray
     var inspection by remember { mutableStateOf<EmeraldSaveInspector.Inspection?>(null) }
     var selected by remember { mutableStateOf(setOf<Int>()) }
     var evMode by remember { mutableStateOf(0) }
+    var customIvs by remember { mutableStateOf(List(6) { "31" }) }
+    var customEvs by remember { mutableStateOf(List(6) { "0" }) }
+    var useCustomIvs by remember { mutableStateOf(false) }
     // Gen III EV order: HP, Attack, Defense, Speed, Sp. Attack, Sp. Defense.
     var liveSource by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf("选择128KB的游戏内存档 .sav；先备份原件。") }
@@ -85,10 +92,58 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit, onReadLiveSave: () -> ByteArray
                 }
                 inspection?.let { info ->
                     Text("努力值方案（仅修改选中的队伍成员）")
-                    listOf("保持原样", "攻击252 / 速度252 / HP6", "特攻252 / 速度252 / HP6", "全部清零").forEachIndexed { index, label ->
+                    listOf("保持原样", "攻击252 / 速度252 / HP6", "特攻252 / 速度252 / HP6", "全部清零", "自定义努力值").forEachIndexed { index, label ->
                         TextButton(onClick = { evMode = index }) {
                             Text((if (evMode == index) "✓ " else "") + label)
                         }
+                    }
+                    TextButton(onClick = { useCustomIvs = !useCustomIvs }) {
+                        Text(if (useCustomIvs) "✓ 自定义个体值" else "使用默认6V（点击自定义）")
+                    }
+                    val labels = listOf("HP", "攻击", "防御", "速度", "特攻", "特防")
+                    if (useCustomIvs || evMode == 4) {
+                        labels.forEachIndexed { index, label ->
+                            Row {
+                                Text(label, modifier = Modifier.width(52.dp))
+                                if (useCustomIvs) {
+                                    OutlinedTextField(
+                                        value = customIvs[index],
+                                        onValueChange = { value -> customIvs = customIvs.toMutableList().also { it[index] = value } },
+                                        label = { Text("IV") },
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                        singleLine = true,
+                                        modifier = Modifier.width(92.dp),
+                                    )
+                                }
+                                if (evMode == 4) {
+                                    OutlinedTextField(
+                                        value = customEvs[index],
+                                        onValueChange = { value -> customEvs = customEvs.toMutableList().also { it[index] = value } },
+                                        label = { Text("EV") },
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                        singleLine = true,
+                                        modifier = Modifier.width(92.dp),
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    fun ivValues(): List<Int> {
+                        if (!useCustomIvs) return List(6) { 31 }
+                        val values = customIvs.map { it.toIntOrNull() ?: error("IV必须为0～31的整数") }
+                        require(values.all { it in 0..31 }) { "IV必须为0～31" }
+                        return values
+                    }
+                    fun evValues(): List<Int>? {
+                        val values = when (evMode) {
+                            1 -> listOf(6, 252, 0, 252, 0, 0)
+                            2 -> listOf(6, 0, 0, 252, 252, 0)
+                            3 -> List(6) { 0 }
+                            4 -> customEvs.map { it.toIntOrNull() ?: error("EV必须为整数") }
+                            else -> return null
+                        }
+                        require(values.all { it in 0..252 } && values.sum() <= 510) { "EV单项不超过252，总和不超过510" }
+                        return values
                     }
                     Text("存档序号：${info.sequence}")
                     (1..info.partyCount).forEach { position ->
@@ -106,13 +161,8 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit, onReadLiveSave: () -> ByteArray
                         Button(enabled = selected.isNotEmpty(), onClick = {
                             runCatching {
                                 val original = requireNotNull(saveBytes)
-                                val evs = when (evMode) {
-                                    1 -> listOf(6, 252, 0, 0, 0, 252)
-                                    2 -> listOf(6, 0, 0, 252, 0, 252)
-                                    3 -> listOf(0, 0, 0, 0, 0, 0)
-                                    else -> null
-                                }
-                                val patched = EmeraldSixVPatcher.apply(original, selected, evs)
+                                val evs = evValues()
+                                val patched = EmeraldSixVPatcher.apply(original, selected, evs, ivValues())
                                 val dir = java.io.File(context.filesDir, "gba_plus_backups").apply { mkdirs() }
                                 val backup = java.io.File.createTempFile("before_6v_", ".sav", dir)
                                 backup.writeBytes(original)
@@ -130,13 +180,8 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit, onReadLiveSave: () -> ByteArray
                         onClick = {
                             runCatching {
                                 val source = requireNotNull(saveBytes)
-                                val evs = when (evMode) {
-                                    1 -> listOf(6, 252, 0, 0, 0, 252)
-                                    2 -> listOf(6, 0, 0, 252, 0, 252)
-                                    3 -> listOf(0, 0, 0, 0, 0, 0)
-                                    else -> null
-                                }
-                                pendingExport = EmeraldSixVPatcher.apply(source, selected, evs)
+                                val evs = evValues()
+                                pendingExport = EmeraldSixVPatcher.apply(source, selected, evs, ivValues())
                             }.onSuccess { export.launch("pokemon_6v_test.sav") }
                                 .onFailure { message = "修改验证失败，未创建文件：${it.message}" }
                         },
