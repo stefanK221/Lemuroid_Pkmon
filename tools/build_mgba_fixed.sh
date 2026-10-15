@@ -12,11 +12,16 @@ common=(-DBUILD_QT=OFF -DBUILD_SDL=OFF -DBUILD_GL=OFF -DBUILD_GLES2=OFF -DBUILD_
         -DUSE_ELF=OFF -DUSE_JSON_C=OFF -DUSE_FREETYPE=OFF -DBUILD_LTO=OFF)
 cmake -S "$source_dir" -B "$build_root/host" "${common[@]}" -DBUILD_SHARED=OFF -DBUILD_STATIC=ON
 cmake --build "$build_root/host" --target mgba --parallel 2
-cc -std=c11 -D_GNU_SOURCE -I "$source_dir/include" -I "$build_root/host/include" \
+cc -std=c11 -D_GNU_SOURCE -DENABLE_VFS -DENABLE_DIRECTORIES \
+   -I "$source_dir/include" -I "$build_root/host/include" \
    "$repo_root/tools/test_mgba_cheat_reset.c" -L "$build_root/host" \
    -lmgba -lm -lpthread -o "$build_root/test-reset"
-if "$build_root/test-reset" --legacy; then
-    echo 'Regression test failed to reproduce the original bug' >&2
+set +e
+"$build_root/test-reset" --legacy
+legacy_status=$?
+set -e
+if test "$legacy_status" -ne 1; then
+    echo "Expected the legacy ROM-restoration failure (exit 1), got $legacy_status" >&2
     exit 1
 fi
 "$build_root/test-reset"

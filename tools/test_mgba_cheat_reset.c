@@ -1,4 +1,5 @@
 /* Exercise real mGBA patch tracking without a commercial ROM or a game save. */
+#include <mgba/flags.h>
 #include <mgba/core/core.h>
 #include <mgba/core/cheats.h>
 #include <assert.h>
