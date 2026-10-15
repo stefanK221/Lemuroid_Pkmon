@@ -61,6 +61,11 @@ class CheatStore(context: Context) {
         )
     }
 
+    /** Persist a global disable in one transaction after native cheats have been cleared. */
+    fun disableAll(gameId: String) {
+        save(gameId, read(gameId).map { it.copy(enabled = false) })
+    }
+
     fun setEnabled(gameId: String, id: String, enabled: Boolean) {
         save(gameId, read(gameId).map { if (it.id == id) it.copy(enabled = enabled) else it })
     }
