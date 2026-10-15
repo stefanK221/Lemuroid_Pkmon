@@ -123,7 +123,8 @@ fun CheatManagerDialog(
                 if (entries.isNotEmpty() && filteredEntries.isEmpty()) {
                     Text("没有匹配的金手指，请调整搜索条件。")
                 }
-                filteredEntries.forEach { (index, item) ->
+                filteredEntries.sortedWith(compareByDescending<IndexedValue<CheatEntry>> { it.value.favorite }.thenBy { it.index })
+                    .forEach { (index, item) ->
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(item.title)
@@ -149,6 +150,13 @@ fun CheatManagerDialog(
                                 error = null
                             }.onFailure { error = "操作失败：${it.message ?: it.javaClass.simpleName}" }
                         }) { Text(if (item.enabled) "关闭" else "启用") }
+                        TextButton(onClick = {
+                            runCatching {
+                                store.setFavorite(gameId, item.id, !item.favorite)
+                                entries = store.read(gameId)
+                                error = null
+                            }.onFailure { error = "收藏失败：${it.message}" }
+                        }) { Text(if (item.favorite) "★" else "☆") }
                         TextButton(
                             enabled = !item.enabled && item.id !in potentiallyActive && !needsRestart,
                             onClick = {
