@@ -2,11 +2,14 @@ package com.swordfish.lemuroid.app.shared.cheats
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -17,7 +20,6 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.security.SecureRandom
 
 @Composable
 fun QuickToolsDialog(
@@ -34,6 +36,9 @@ fun QuickToolsDialog(
     var message by remember { mutableStateOf("正在核对游戏版本…") }
     var search by remember { mutableStateOf("") }
     var selected by remember { mutableStateOf(6) }
+    var nature by remember { mutableStateOf<Int?>(null) }
+    var shiny by remember { mutableStateOf(false) }
+    var natureMenuOpen by remember { mutableStateOf(false) }
     var confirmation by remember { mutableStateOf<String?>(null) }
     var action by remember { mutableStateOf<(() -> Unit)?>(null) }
     LaunchedEffect(fileName) {
@@ -106,13 +111,43 @@ fun QuickToolsDialog(
                     TextButton(onClick = { selected = id }) { Text((if (selected == id) "✓ " else "") + "$name · $id") }
                 }
                 Text("已选：${QuickToolsProfile.namedSpecies[selected] ?: "内部编号 $selected"}")
+                Text("赠送精灵的性格与闪光（不修改已有队伍）")
+                val natureNames = listOf(
+                    "勤奋", "怕寂寞", "勇敢", "固执", "顽皮",
+                    "大胆", "坦率", "悠闲", "淘气", "乐天",
+                    "胆小", "急躁", "认真", "爽朗", "天真",
+                    "内敛", "慢吞吞", "冷静", "害羞", "马虎",
+                    "温和", "温顺", "自大", "慎重", "浮躁",
+                )
+                Box {
+                    Button(onClick = { natureMenuOpen = true }) {
+                        Text("性格：${nature?.let { natureNames[it] } ?: "随机"} ▾")
+                    }
+                    DropdownMenu(expanded = natureMenuOpen, onDismissRequest = { natureMenuOpen = false }) {
+                        DropdownMenuItem(text = { Text("随机性格") }, onClick = {
+                            nature = null
+                            natureMenuOpen = false
+                        })
+                        natureNames.forEachIndexed { index, label ->
+                            DropdownMenuItem(text = { Text(label) }, onClick = {
+                                nature = index
+                                natureMenuOpen = false
+                            })
+                        }
+                    }
+                }
+                TextButton(onClick = { shiny = !shiny }) {
+                    Text(if (shiny) "✓ 闪光精灵（点击改为普通）" else "普通精灵（点击设为闪光）")
+                }
                 Button(enabled = profile != null, onClick = {
                     val id = selected
-                    confirmation = "将新增${QuickToolsProfile.namedSpecies[id] ?: "内部编号 $id"}到第一个空盒位。会先备份并重启游戏，未保存的进度会丢失。已在游戏内保存后再执行。"
+                    val selectedNature = nature
+                    val selectedShiny = shiny
+                    confirmation = "将新增${QuickToolsProfile.namedSpecies[id] ?: "内部编号 $id"}（性格：${selectedNature?.let { natureNames[it] } ?: "随机"}，${if (selectedShiny) "闪光" else "普通"}）到第一个空盒位。会先备份并重启游戏，未保存的进度会丢失。已在游戏内保存后再执行。"
                     action = {
                         val verified = requireNotNull(profile)
                         val raw = onReadSave()
-                        val pid = SecureRandom().nextInt().toLong() and 0xFFFFFFFFL
+                        val pid = EmeraldQuickSavePatcher.personalityFor(raw, selectedNature, selectedShiny)
                         val gift = EmeraldQuickSavePatcher.addToFirstEmptyBox(raw, id, verified.speciesName(id), verified.tacklePp(), pid)
                         backup(raw, "before_gift_")
                         onApplySave(gift.bytes)
