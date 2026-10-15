@@ -41,6 +41,31 @@ object QuickToolsProfile {
         require(hash == HASH) { "此 ROM 尚未适配，快捷修改已禁用" }
         return Verified(file)
     }
+    // Never assume ROM-hack species IDs equal National Pokédex numbers.
+    // This map contains only species whose internal IDs are known for the verified ROM.
+    // Unmapped National Dex entries must be rejected rather than gifting a wrong species.
+    val nationalToInternal: Map<Int, Int> = buildMap {
+        for (number in 1..251) put(number, number)
+        put(252, 277) // Treecko
+        put(255, 280) // Torchic
+        put(258, 283) // Mudkip
+        put(448, 357) // Lucario
+        put(447, 356) // Riolu
+        put(443, 370) // Gible
+        put(445, 372) // Garchomp
+        put(280, 392) // Ralts
+        put(282, 394) // Gardevoir
+        put(376, 400) // Metagross
+        put(382, 404) // Kyogre
+        put(383, 405) // Groudon
+        put(384, 406) // Rayquaza
+        put(380, 407) // Latias
+        put(381, 408) // Latios
+        put(385, 409) // Jirachi
+        put(386, 410) // Deoxys
+    }
+    val internalToNational: Map<Int, Int> = nationalToInternal.entries.associate { (dex, internal) -> internal to dex }
+
     // Internal IDs for this exact BW ROM; these are not National Pokédex numbers.
     val namedSpecies = linkedMapOf(
         1 to "妙蛙种子", 2 to "妙蛙草", 3 to "妙蛙花", 4 to "小火龙", 5 to "火恐龙", 6 to "喷火龙",
