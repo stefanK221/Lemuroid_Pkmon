@@ -75,6 +75,32 @@ class EmeraldQuickSavePatcherTest {
             }
         }
     }
+    @Test fun customExperienceIsEncryptedCorrectlyWithoutTouchingExistingSave() {
+        val input = fixture()
+        val original = input.copyOf()
+        val expectedExperience = PokemonExperience.forLevel(100, 3)
+        val pid = 0x12345678L
+        val gift = EmeraldQuickSavePatcher.addToFirstEmptyBox(input, 6, name, 35, pid, expectedExperience)
+        val recordStart = offset(5) + 4
+        val trainer = 0x12345678L
+        val decrypted = ByteArray(48)
+        repeat(12) {
+            put32(decrypted, it * 4, u32(gift.bytes, recordStart + 32 + it * 4) xor pid xor trainer)
+        }
+        val order = mutableListOf<List<Int>>()
+        fun permute(prefix: List<Int>, rest: List<Int>) {
+            if (rest.isEmpty()) order.add(prefix) else rest.forEach { permute(prefix + it, rest - it) }
+        }
+        permute(emptyList(), listOf(0, 1, 2, 3))
+        val growth = order[(pid % 24).toInt()].indexOf(0) * 12
+        assertEquals(expectedExperience, u32(decrypted, growth + 4))
+        assertArrayEquals(original, input)
+        assertEquals(64L, EmeraldSaveInspector.inspect(gift.bytes).sequence)
+        assertThrows(IllegalArgumentException::class.java) {
+            EmeraldQuickSavePatcher.addToFirstEmptyBox(input, 6, name, 35, pid, -1L)
+        }
+    }
+
     @Test fun personalityGeneratorRejectsInvalidNatureAndCorruptSave() {
         val input = fixture()
         for (nature in listOf(-1, 25, 100)) {
