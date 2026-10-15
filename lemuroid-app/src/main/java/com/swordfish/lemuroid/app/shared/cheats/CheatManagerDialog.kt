@@ -111,14 +111,6 @@ fun CheatManagerDialog(
                         }
                     }
                 }
-                }
-                Button(onClick = onOpenSaveEditor) { Text("打开6V存档编辑器") }
-                if (error != null) Text(error!!)
-                if (needsRestart) {
-                    Text("⚠️ 已向核心发送关闭指令，但穿墙等内存效果可能持续。彻底关闭需要退出并重新进入游戏。")
-                    Button(onClick = { confirmExit = true }) { Text("退出游戏以彻底关闭（先存档）") }
-                }
-                Text("操作失败时，原因会显示在这里。")
                 Button(
                     onClick = {
                         runCatching {
@@ -130,6 +122,15 @@ fun CheatManagerDialog(
                         }.onFailure { error = it.message ?: "无法保存代码" }
                     },
                 ) { Text("保存代码") }
+                }
+                Button(onClick = onOpenSaveEditor) { Text("打开6V存档编辑器") }
+                if (error != null) Text(error!!)
+                if (needsRestart) {
+                    Text("⚠️ 已向核心发送关闭指令，但穿墙等内存效果可能持续。彻底关闭需要退出并重新进入游戏。")
+                    Button(onClick = { confirmExit = true }) { Text("退出游戏以彻底关闭（先存档）") }
+                }
+                Text("操作失败时，原因会显示在这里。")
+
 
             }
         },
