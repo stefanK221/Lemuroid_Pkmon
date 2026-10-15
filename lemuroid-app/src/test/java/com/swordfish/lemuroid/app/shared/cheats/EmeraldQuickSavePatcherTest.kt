@@ -61,6 +61,33 @@ class EmeraldQuickSavePatcherTest {
             }
         }
     }
+    @Test fun personalityGeneratorMatchesAllNaturesAndShinyRequests() {
+        val input = fixture()
+        val trainer = 0x12345678L
+        for (nature in 0..24) {
+            for (shiny in listOf(false, true)) {
+                val pid = EmeraldQuickSavePatcher.personalityFor(input, nature, shiny)
+                assertEquals(nature.toLong(), pid % 25)
+                assertEquals(shiny, EmeraldQuickSavePatcher.shinyFor(trainer, pid))
+                val output = EmeraldQuickSavePatcher.addToFirstEmptyBox(input, 6, name, 35, pid)
+                assertEquals(pid, u32(output.bytes, offset(5) + 4))
+                assertArrayEquals(input, fixture())
+            }
+        }
+    }
+    @Test fun personalityGeneratorRejectsInvalidNatureAndCorruptSave() {
+        val input = fixture()
+        for (nature in listOf(-1, 25, 100)) {
+            assertThrows(IllegalArgumentException::class.java) {
+                EmeraldQuickSavePatcher.personalityFor(input, nature, false)
+            }
+        }
+        val damaged = input.copyOf()
+        damaged[offset(0)] = 2
+        assertThrows(IllegalArgumentException::class.java) {
+            EmeraldQuickSavePatcher.personalityFor(damaged, 0, true)
+        }
+    }
     @Test fun occupiedSlotIsNeverReplaced() {
         val input = fixture()
         input[offset(5)+4] = 99; checksum(input,5)
