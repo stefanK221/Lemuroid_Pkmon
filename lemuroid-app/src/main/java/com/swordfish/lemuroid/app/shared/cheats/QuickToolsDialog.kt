@@ -118,7 +118,7 @@ fun QuickToolsDialog(
                     label = { Text("领取精灵等级（1～100）") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    isError = levelText.toIntOrNull() !in 1..100,
+                    isError = (levelText.toIntOrNull() ?: 0) !in 1..100,
                 )
                 Text("赠送精灵的性格与闪光（不修改已有队伍）")
                 val natureNames = listOf(
@@ -148,7 +148,7 @@ fun QuickToolsDialog(
                 TextButton(onClick = { shiny = !shiny }) {
                     Text(if (shiny) "✓ 闪光精灵（点击改为普通）" else "普通精灵（点击设为闪光）")
                 }
-                Button(enabled = profile != null && levelText.toIntOrNull() in 1..100, onClick = {
+                Button(enabled = profile != null && (levelText.toIntOrNull() ?: 0) in 1..100, onClick = {
                     val id = selected
                     val selectedNature = nature
                     val selectedShiny = shiny
@@ -156,8 +156,8 @@ fun QuickToolsDialog(
                     confirmation = "将新增${QuickToolsProfile.namedSpecies[id] ?: "内部编号 $id"}（Lv.${selectedLevel ?: "无效"}，性格：${selectedNature?.let { natureNames[it] } ?: "随机"}，${if (selectedShiny) "闪光" else "普通"}）到第一个空盒位。会先备份并重启游戏，未保存的进度会丢失。已在游戏内保存后再执行。"
                     action = {
                         val verified = requireNotNull(profile)
-                        require(selectedLevel in 1..100) { "请输入1～100的有效等级" }
-                        val experience = PokemonExperience.forLevel(selectedLevel, verified.growthRate(id))
+                        require((selectedLevel ?: 0) in 1..100) { "请输入1～100的有效等级" }
+                        val experience = PokemonExperience.forLevel(requireNotNull(selectedLevel), verified.growthRate(id))
                         val raw = onReadSave()
                         val pid = EmeraldQuickSavePatcher.personalityFor(raw, selectedNature, selectedShiny)
                         val gift = EmeraldQuickSavePatcher.addToFirstEmptyBox(raw, id, verified.speciesName(id), verified.tacklePp(), pid, experience)
