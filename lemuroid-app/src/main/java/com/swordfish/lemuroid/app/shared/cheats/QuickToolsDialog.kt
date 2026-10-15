@@ -38,6 +38,7 @@ fun QuickToolsDialog(
     var selected by remember { mutableStateOf(6) }
     var nature by remember { mutableStateOf<Int?>(null) }
     var shiny by remember { mutableStateOf(false) }
+    var levelText by remember { mutableStateOf("1") }
     var natureMenuOpen by remember { mutableStateOf(false) }
     var confirmation by remember { mutableStateOf<String?>(null) }
     var action by remember { mutableStateOf<(() -> Unit)?>(null) }
@@ -111,6 +112,14 @@ fun QuickToolsDialog(
                     TextButton(onClick = { selected = id }) { Text((if (selected == id) "✓ " else "") + "$name · $id") }
                 }
                 Text("已选：${QuickToolsProfile.namedSpecies[selected] ?: "内部编号 $selected"}")
+                OutlinedTextField(
+                    value = levelText,
+                    onValueChange = { levelText = it.filter { char -> char.isDigit() }.take(3) },
+                    label = { Text("领取精灵等级（1～100）") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    isError = levelText.toIntOrNull() !in 1..100,
+                )
                 Text("赠送精灵的性格与闪光（不修改已有队伍）")
                 val natureNames = listOf(
                     "勤奋", "怕寂寞", "勇敢", "固执", "顽皮",
@@ -139,16 +148,19 @@ fun QuickToolsDialog(
                 TextButton(onClick = { shiny = !shiny }) {
                     Text(if (shiny) "✓ 闪光精灵（点击改为普通）" else "普通精灵（点击设为闪光）")
                 }
-                Button(enabled = profile != null, onClick = {
+                Button(enabled = profile != null && levelText.toIntOrNull() in 1..100, onClick = {
                     val id = selected
                     val selectedNature = nature
                     val selectedShiny = shiny
-                    confirmation = "将新增${QuickToolsProfile.namedSpecies[id] ?: "内部编号 $id"}（性格：${selectedNature?.let { natureNames[it] } ?: "随机"}，${if (selectedShiny) "闪光" else "普通"}）到第一个空盒位。会先备份并重启游戏，未保存的进度会丢失。已在游戏内保存后再执行。"
+                    val selectedLevel = levelText.toIntOrNull()
+                    confirmation = "将新增${QuickToolsProfile.namedSpecies[id] ?: "内部编号 $id"}（Lv.${selectedLevel ?: "无效"}，性格：${selectedNature?.let { natureNames[it] } ?: "随机"}，${if (selectedShiny) "闪光" else "普通"}）到第一个空盒位。会先备份并重启游戏，未保存的进度会丢失。已在游戏内保存后再执行。"
                     action = {
                         val verified = requireNotNull(profile)
+                        require(selectedLevel in 1..100) { "请输入1～100的有效等级" }
+                        val experience = PokemonExperience.forLevel(selectedLevel, verified.growthRate(id))
                         val raw = onReadSave()
                         val pid = EmeraldQuickSavePatcher.personalityFor(raw, selectedNature, selectedShiny)
-                        val gift = EmeraldQuickSavePatcher.addToFirstEmptyBox(raw, id, verified.speciesName(id), verified.tacklePp(), pid)
+                        val gift = EmeraldQuickSavePatcher.addToFirstEmptyBox(raw, id, verified.speciesName(id), verified.tacklePp(), pid, experience)
                         backup(raw, "before_gift_")
                         onApplySave(gift.bytes)
                         message = "已加入电脑第${gift.box}盒、第${gift.position}格。进入游戏后到电脑领取；原存档已备份。"
