@@ -12,6 +12,13 @@ def patch(root):
     source = target.read_text(encoding="utf-8")
     if source.count(old) != 1:
         raise RuntimeError("Unexpected mGBA reset implementation; refusing to patch")
+    # CMake already supplies version.c; the standalone libretro Makefile does
+    # not. Avoid defining these globals twice when building through CMake.
+    version_globals = ('const char* const projectVersion = "0.11-dev" GIT_VERSION;\n'
+                       'const char* const projectName = "mGBA";\n')
+    if source.count(version_globals) != 1:
+        raise RuntimeError("Unexpected libretro version globals")
+    source = source.replace(version_globals, "")
     target.write_text(source.replace(old, new), encoding="utf-8")
     shutil.copyfile(Path(__file__).with_name("mgba_cheat_reset.h"),
                     target.with_name("gba_plus_cheat_reset.h"))
@@ -24,6 +31,16 @@ def patch(root):
     if source.count(entry) != 1:
         raise RuntimeError("Unexpected mGBA core source list")
     core_cmake.write_text(source.replace(entry, "\n"), encoding="utf-8")
+    # CORE_SRC already contains the platform memory implementation. The
+    # standalone wrapper includes that same file and must not be globbed in.
+    cmake = Path(root) / "CMakeLists.txt"
+    source = cmake.read_text(encoding="utf-8")
+    old_glob = "file(GLOB RETRO_SRC ${CMAKE_CURRENT_SOURCE_DIR}/src/platform/libretro/*.c)"
+    if source.count(old_glob) != 1:
+        raise RuntimeError("Unexpected libretro CMake source list")
+    cmake.write_text(source.replace(old_glob,
+        "set(RETRO_SRC ${CMAKE_CURRENT_SOURCE_DIR}/src/platform/libretro/libretro.c)"),
+        encoding="utf-8")
 
 if __name__ == "__main__":
     patch(sys.argv[1])
