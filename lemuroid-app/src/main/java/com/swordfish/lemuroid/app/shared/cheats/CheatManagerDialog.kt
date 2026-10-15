@@ -45,7 +45,7 @@ fun CheatManagerDialog(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text("点击启用会把代码发送给mGBA核心。当前核心不能单独关闭已发送的代码，需重新启动游戏；请先备份存档。")
+                Text("金手指启用后可以尝试关闭；请先备份存档。某些代码的效果可能持续到重启或重新进入地图。")
                 Button(onClick = onOpenSaveEditor) { Text("打开6V存档编辑器") }
                 OutlinedTextField(
                     value = title,
@@ -87,21 +87,20 @@ fun CheatManagerDialog(
                             Text(item.format.name)
                         }
                         Button(
-                            enabled = !item.enabled,
                             onClick = {
                                 runCatching {
-                                    onApplyCheat(index, true, item.code)
-                                    store.setEnabled(gameId, item.id, true)
+                                    onApplyCheat(index, !item.enabled, item.code)
+                                    store.setEnabled(gameId, item.id, !item.enabled)
                                     entries = store.read(gameId)
                                     error = null
                                 }.onFailure {
-                                    error = "启用失败：${it.message ?: it.javaClass.simpleName}"
+                                    error = "操作失败：${it.message ?: it.javaClass.simpleName}"
                                 }
                             },
-                        ) { Text(if (item.enabled) "已启用" else "启用") }
-                        TextButton(enabled = !item.enabled, onClick = {
+                        ) { Text(if (item.enabled) "关闭" else "启用") }
+                        TextButton(onClick = {
                             runCatching {
-                                require(!item.enabled) { "已启用的代码请重启游戏后删除" }
+                                if (item.enabled) onApplyCheat(index, false, item.code)
                                 store.delete(gameId, item.id)
                                 entries = store.read(gameId)
                                 error = null
