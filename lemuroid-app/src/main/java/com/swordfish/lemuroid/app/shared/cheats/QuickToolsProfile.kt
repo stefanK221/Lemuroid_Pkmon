@@ -16,6 +16,31 @@ object QuickToolsProfile {
             require(p in 0 until rom.length()) { "ROM 表指针无效" }
             return p
         }
+        /**
+         * Species -> Pokédex order as stored in this exact 32MiB ROM.
+         * Verified offline against ROM SHA-256 and observed pairs: 6→6, 277→252,
+         * 404→382. This is NOT a direct storage species ID.
+         * Whether the game's UI displays regional or national numbering still needs
+         * a phone-side check before claiming 100% in-game dex correspondence.
+         */
+        fun dexToSpecies(): Map<Int, Int> = RandomAccessFile(file, "r").use { rom ->
+            val result = LinkedHashMap<Int, Int>()
+            rom.seek(0x31DC82L)
+            for (species in 1..411) {
+                val low = rom.readUnsignedByte()
+                val high = rom.readUnsignedByte()
+                val dex = low or (high shl 8)
+                require(dex in 1..411 && result.put(dex, species) == null) {
+                    "ROM图鉴编号映射重复或无效；已停止领取"
+                }
+            }
+            require(result.size == 411 &&
+                result[6] == 6 &&
+                result[252] == 277 &&
+                result[382] == 404
+            ) { "ROM图鉴映射校验失败；已停止领取" }
+            result
+        }
         fun speciesName(id: Int): ByteArray = RandomAccessFile(file, "r").use { rom ->
             val table = pointer(rom, 0x144)
             require(table + id * 11 + 11 <= rom.length())
