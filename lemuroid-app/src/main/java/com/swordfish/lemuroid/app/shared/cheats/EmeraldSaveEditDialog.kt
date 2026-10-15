@@ -44,6 +44,8 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit, onReadLiveSave: () -> ByteArray
     var showSaveConfirm by remember { mutableStateOf(false) }
     var pendingPatch by remember { mutableStateOf<ByteArray?>(null) }
     var patchSummary by remember { mutableStateOf("") }
+    var individualMode by remember { mutableStateOf(false) }
+    var individualEdits by remember { mutableStateOf<Map<Int, Pair<List<Int>, List<Int>?>>>(emptyMap()) }
     var evMode by remember { mutableStateOf(0) }
     var evMenuExpanded by remember { mutableStateOf(false) }
     var customIvs by remember { mutableStateOf(List(6) { "31" }) }
@@ -314,6 +316,24 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit, onReadLiveSave: () -> ByteArray
                         require(values.all { it in 0..252 } && values.sum() <= 510) { "EV单项不超过252，总和不超过510" }
                         return values
                     }
+                    TextButton(onClick = {
+                        individualMode = !individualMode
+                        individualEdits = emptyMap()
+                    }) {
+                        Text(if (individualMode) "✓ 逐只独立设置（点击切回批量）" else "逐只独立设置IV/EV")
+                    }
+                    if (individualMode) {
+                        Text("先在下方勾选一只宝可梦，再调整上方IV/EV，点击「记录这只的设置」。依次记录多只，最后统一保存。")
+                        Button(enabled = selected.size == 1, onClick = {
+                            runCatching {
+                                val position = selected.single()
+                                individualEdits = individualEdits + (position to (ivValues() to evValues()))
+                                message = "已记录队伍第${position}只的设置；可以选择下一只。"
+                            }.onFailure { message = "设置无效：${it.message}" }
+                        }) { Text("记录这只的设置") }
+                        Text("已记录：${individualEdits.keys.sorted().joinToString(", ").ifBlank { "无" }}")
+                        TextButton(onClick = { individualEdits = emptyMap() }) { Text("清空已记录设置") }
+                    }
                     Text("存档序号：${info.sequence}")
                     (1..info.partyCount).forEach { position ->
                         Row(modifier = Modifier.padding(vertical = 2.dp)) {
@@ -331,20 +351,30 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit, onReadLiveSave: () -> ByteArray
                         }
                     }
                     if (liveSource) {
-                        Button(enabled = selected.isNotEmpty(), onClick = {
+                        Button(enabled = if (individualMode) individualEdits.isNotEmpty() else selected.isNotEmpty(), onClick = {
                             runCatching {
                                 val original = requireNotNull(saveBytes)
                                 val evs = evValues()
-                                val patched = EmeraldSixVPatcher.apply(original, selected, evs, ivValues())
+                                val patched = if (individualMode) {
+                                    EmeraldSixVPatcher.applyIndividual(original, individualEdits)
+                                } else {
+                                    EmeraldSixVPatcher.apply(original, selected, evs, ivValues())
+                                }
                                 pendingPatch = patched
-                                patchSummary = "修改队伍位置：${selected.sorted().joinToString(", ")}\nIV：${ivValues().joinToString("/")}\nEV：${evs?.joinToString("/") ?: "保持原样"}"
+                                patchSummary = if (individualMode) {
+                                    individualEdits.toSortedMap().entries.joinToString("\n") { (position, spread) ->
+                                        "第${position}只：IV ${spread.first.joinToString("/")}，EV ${spread.second?.joinToString("/") ?: "保持原样"}"
+                                    }
+                                } else {
+                                    "修改队伍位置：${selected.sorted().joinToString(", ")}\nIV：${ivValues().joinToString("/")}\nEV：${evs?.joinToString("/") ?: "保持原样"}"
+                                }
                                 showSaveConfirm = true
                             }.onFailure { message = "直接修改失败：${it.message}" }
                         }) { Text("保存修改并重启游戏") }
                         Text("请先在游戏内正常保存；此操作将重置游戏，未保存的进度可能丢失。")
                     }
                     Button(
-                        enabled = selected.isNotEmpty(),
+                        enabled = if (individualMode) individualEdits.isNotEmpty() else selected.isNotEmpty(),
                         onClick = {
                             runCatching {
                                 val source = requireNotNull(saveBytes)
