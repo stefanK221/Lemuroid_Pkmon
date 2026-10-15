@@ -140,7 +140,7 @@ abstract class BaseGameActivity : ImmersiveActivity() {
                     BaseGameScreen(viewModel = baseGameScreenViewModel) {
                         GameScreen(viewModel)
                     }
-                    if (system.id == "GBA") {
+                    if (game.systemId == "GBA") {
                         TextButton(
                             modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
                             onClick = { showCheatManager = true },
