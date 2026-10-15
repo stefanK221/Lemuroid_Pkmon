@@ -22,6 +22,17 @@ object QuickToolsProfile {
             rom.seek(table + id * 11)
             ByteArray(11).also { rom.readFully(it) }
         }
+        /** ROM header 0x1BC points to 28-byte Gen III base stats; byte 19 is growth rate. */
+        fun growthRate(species: Int): Int = RandomAccessFile(file, "r").use { rom ->
+            require(species in 1..251 || species in 277..411)
+            val table = pointer(rom, 0x1BC)
+            val location = table + species * 28L + 19
+            require(location < rom.length()) { "精灵成长类型表超出ROM范围" }
+            rom.seek(location)
+            rom.readUnsignedByte().also {
+                require(it in 0..5) { "ROM经验成长类型无法识别，已停止操作" }
+            }
+        }
         fun tacklePp(): Int = RandomAccessFile(file, "r").use { rom ->
             val table = pointer(rom, 0x1CC)
             rom.seek(table + 33 * 12 + 4)
