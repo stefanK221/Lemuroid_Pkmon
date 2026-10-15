@@ -98,9 +98,8 @@ fun CheatManagerDialog(
                                 }
                             },
                         ) { Text(if (item.enabled) "关闭" else "启用") }
-                        TextButton(onClick = {
+                        TextButton(enabled = entries.none { it.enabled }, onClick = {
                             runCatching {
-                                if (item.enabled) onApplyCheat(index, false, item.code)
                                 store.delete(gameId, item.id)
                                 entries = store.read(gameId)
                                 error = null
