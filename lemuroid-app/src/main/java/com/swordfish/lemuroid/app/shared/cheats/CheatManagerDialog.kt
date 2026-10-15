@@ -46,9 +46,25 @@ fun CheatManagerDialog(
         AlertDialog(
             onDismissRequest = { confirmExit = false },
             title = { Text("退出游戏以彻底关闭金手指？") },
-            text = { Text("请先回到正常位置并在游戏内存档。退出后需要重新打开游戏，未保存的进度可能丢失。") },
+            text = { Text("请先回到正常位置并在游戏内存档。将先关闭所有已启用的代码，再退出游戏。重新打开游戏后才可能清除穿墙等残留内存效果；未保存的进度可能丢失。") },
             confirmButton = {
-                TextButton(onClick = { confirmExit = false; onExitGame() }) { Text("确认退出") }
+                TextButton(onClick = {
+                    runCatching {
+                        entries.forEachIndexed { index, item ->
+                            if (item.enabled) {
+                                onApplyCheat(index, false, item.code)
+                                store.setEnabled(gameId, item.id, false)
+                            }
+                        }
+                        entries = store.read(gameId)
+                        confirmExit = false
+                        onExitGame()
+                    }.onFailure {
+                        entries = store.read(gameId)
+                        confirmExit = false
+                        error = "关闭金手指失败，未退出游戏：${it.message}"
+                    }
+                }) { Text("关闭金手指并退出") }
             },
             dismissButton = { TextButton(onClick = { confirmExit = false }) { Text("取消") } },
         )
@@ -155,7 +171,7 @@ fun CheatManagerDialog(
                 }
                 Button(onClick = onOpenSaveEditor) { Text("打开6V存档编辑器") }
                 if (error != null) Text(error!!)
-                if (needsRestart) {
+                if (needsRestart || potentiallyActive.isNotEmpty()) {
                     Text("⚠️ 已向核心发送关闭指令，但穿墙等内存效果可能持续。彻底关闭需要退出并重新进入游戏。")
                     Button(onClick = { confirmExit = true }) { Text("退出游戏以彻底关闭（先存档）") }
                 }
