@@ -23,13 +23,14 @@ import androidx.compose.ui.unit.dp
  * Do not import the edited save into an emulator until the game has been closed and a backup exists.
  */
 @Composable
-fun EmeraldSaveEditDialog(onDismiss: () -> Unit) {
+fun EmeraldSaveEditDialog(onDismiss: () -> Unit, onReadLiveSave: () -> ByteArray, onApplyLiveSave: (ByteArray) -> Unit) {
     val context = LocalContext.current
     var saveBytes by remember { mutableStateOf<ByteArray?>(null) }
     var pendingExport by remember { mutableStateOf<ByteArray?>(null) }
     var inspection by remember { mutableStateOf<EmeraldSaveInspector.Inspection?>(null) }
     var selected by remember { mutableStateOf(setOf<Int>()) }
     var evMode by remember { mutableStateOf(0) }
+    var liveSource by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf("选择128KB的游戏内存档 .sav；先备份原件。") }
     val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri: Uri? ->
         if (uri != null) {
@@ -48,6 +49,7 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit) {
                 val raw = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
                     ?: error("无法读取文件")
                 val parsed = EmeraldSaveInspector.inspect(raw)
+                liveSource = false
                 saveBytes = raw
                 inspection = parsed
                 selected = (1..parsed.partyCount).toSet()
@@ -66,6 +68,17 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit) {
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 Text(message)
+                Button(onClick = {
+                    runCatching {
+                        val raw = onReadLiveSave()
+                        val parsed = EmeraldSaveInspector.inspect(raw)
+                        saveBytes = raw
+                        inspection = parsed
+                        selected = (1..parsed.partyCount).toSet()
+                        liveSource = true
+                        message = "已读取当前游戏存档。请先在游戏中正常保存；修改将重置游戏。"
+                    }.onFailure { message = "读取当前游戏存档失败：${it.message}" }
+                }) { Text("读取当前游戏存档（无需导入）") }
                 Button(onClick = { load.launch(arrayOf("application/octet-stream", "*/*")) }) {
                     Text("选择 .sav 文件")
                 }
@@ -87,6 +100,29 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit) {
                             )
                             Text("队伍第${position}只 IV：${info.partyIvs[position - 1].joinToString("/")}; EV：${info.partyEvs[position - 1].joinToString("/")}")
                         }
+                    }
+                    if (liveSource) {
+                        Button(enabled = selected.isNotEmpty(), onClick = {
+                            runCatching {
+                                val original = requireNotNull(saveBytes)
+                                val evs = when (evMode) {
+                                    1 -> listOf(6, 252, 0, 252, 0, 0)
+                                    2 -> listOf(6, 0, 0, 252, 252, 0)
+                                    3 -> listOf(0, 0, 0, 0, 0, 0)
+                                    else -> null
+                                }
+                                val patched = EmeraldSixVPatcher.apply(original, selected, evs)
+                                val dir = java.io.File(context.filesDir, "gba_plus_backups").apply { mkdirs() }
+                                val backup = java.io.File.createTempFile("before_6v_", ".sav", dir)
+                                backup.writeBytes(original)
+                                onApplyLiveSave(patched)
+                                liveSource = false
+                                saveBytes = null
+                                inspection = null
+                                message = "已直接更新游戏存档并重置游戏。原存档备份：${backup.name}"
+                            }.onFailure { message = "直接修改失败：${it.message}" }
+                        }) { Text("直接应用6V到当前游戏（会重置）") }
+                        Text("请先在游戏内正常保存；此操作将重置游戏，未保存的进度可能丢失。")
                     }
                     Button(
                         enabled = selected.isNotEmpty(),
