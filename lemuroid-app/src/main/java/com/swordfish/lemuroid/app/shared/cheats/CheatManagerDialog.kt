@@ -46,7 +46,7 @@ fun CheatManagerDialog(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text("开关将代码提交给当前游戏核心；是否生效取决于核心及代码格式。使用前请备份存档。")
+                Text("点击启用会把代码发送给mGBA核心。当前核心不能单独关闭已发送的代码，需重新启动游戏；请先备份存档。")
                 Button(onClick = onOpenSaveEditor) { Text("打开6V存档编辑器") }
                 OutlinedTextField(
                     value = title,
@@ -88,18 +88,19 @@ fun CheatManagerDialog(
                         }
                         Switch(
                             checked = item.enabled,
+                            enabled = !item.enabled,
                             onCheckedChange = { enabled ->
                                 runCatching {
-                                    onApplyCheat(index, enabled, item.code)
+                                    onApplyCheat(index, true, item.code)
                                     store.setEnabled(gameId, item.id, enabled)
                                     entries = store.read(gameId)
                                     error = null
                                 }.onFailure { error = "金手指应用失败：${it.message}" }
                             },
                         )
-                        TextButton(onClick = {
+                        TextButton(enabled = !item.enabled, onClick = {
                             runCatching {
-                                if (item.enabled) onApplyCheat(index, false, item.code)
+                                require(!item.enabled) { "已启用的代码请重启游戏后删除" }
                                 store.delete(gameId, item.id)
                                 entries = store.read(gameId)
                                 error = null
