@@ -44,8 +44,9 @@ object EmeraldSixVPatcher {
     }
 
     /** Party positions are 1-based; an empty selection is rejected. */
-    fun apply(input: ByteArray, selectedPositions: Set<Int>, evPreset: List<Int>? = null): ByteArray {
+    fun apply(input: ByteArray, selectedPositions: Set<Int>, evPreset: List<Int>? = null, ivPreset: List<Int> = List(6) { 31 }): ByteArray {
         require(evPreset == null || (evPreset.size == 6 && evPreset.all { it in 0..252 } && evPreset.sum() <= 510)) { "Invalid EV spread" }
+        require(ivPreset.size == 6 && ivPreset.all { it in 0..31 }) { "Invalid IV spread" }
         val original = EmeraldSaveInspector.inspect(input)
         require(selectedPositions.isNotEmpty())
         require(selectedPositions.all { it in 1..original.partyCount }) {
@@ -73,7 +74,8 @@ object EmeraldSixVPatcher {
             val misc = permutations[(personality % 24).toInt()].indexOf(3)
             val ivOffset = misc * 12 + 4
             val oldField = u32(plain, ivOffset)
-            put32(plain, ivOffset, (oldField and 0xC0000000L) or 0x3FFFFFFFL)
+            val newIvs = ivPreset.foldIndexed(0L) { index, bits, iv -> bits or (iv.toLong() shl (index * 5)) }
+            put32(plain, ivOffset, (oldField and 0xC0000000L) or newIvs)
             for (word in 0 until 12) {
                 put32(output, start + 32 + word * 4, u32(plain, word * 4) xor key)
             }
@@ -85,7 +87,7 @@ object EmeraldSixVPatcher {
         check(verified.sequence == original.sequence)
         check(verified.partyCount == original.partyCount)
         for (position in selectedPositions) {
-            check(verified.partyIvs[position - 1] == List(6) { 31 })
+            check(verified.partyIvs[position - 1] == ivPreset)
         }
         for (position in 1..original.partyCount) {
             if (position !in selectedPositions) {
