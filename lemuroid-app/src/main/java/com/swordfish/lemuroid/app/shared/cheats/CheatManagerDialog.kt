@@ -42,6 +42,7 @@ fun CheatManagerDialog(
     var needsRestart by remember(gameId) { mutableStateOf(false) }
     var confirmExit by remember { mutableStateOf(false) }
     var showAddForm by remember { mutableStateOf(false) }
+    var editingId by remember(gameId) { mutableStateOf<String?>(null) }
     var potentiallyActive by remember(gameId) { mutableStateOf(setOf<String>()) }
     var lastDisabledIds by remember(gameId) { mutableStateOf(setOf<String>()) }
 
@@ -127,6 +128,17 @@ fun CheatManagerDialog(
                                 error = null
                             }.onFailure { error = "操作失败：${it.message ?: it.javaClass.simpleName}" }
                         }) { Text(if (item.enabled) "关闭" else "启用") }
+                        TextButton(
+                            enabled = !item.enabled && item.id !in potentiallyActive && !needsRestart,
+                            onClick = {
+                                title = item.title
+                                code = item.code
+                                format = item.format
+                                editingId = item.id
+                                showAddForm = true
+                                error = null
+                            },
+                        ) { Text("编辑") }
                         TextButton(enabled = entries.none { it.enabled } && potentiallyActive.isEmpty() && !needsRestart, onClick = {
                             runCatching {
                                 store.delete(gameId, item.id)
@@ -136,41 +148,67 @@ fun CheatManagerDialog(
                         }) { Text("删除") }
                     }
                 }
-                Button(onClick = { showAddForm = !showAddForm }) {
-                    Text(if (showAddForm) "收起新增代码" else "＋ 新增代码")
+                Button(onClick = {
+                    if (showAddForm) {
+                        showAddForm = false
+                        editingId = null
+                    } else {
+                        showAddForm = true
+                        editingId = null
+                        title = ""
+                        code = ""
+                        format = CheatFormat.CODE_BREAKER
+                    }
+                }) {
+                    Text(if (showAddForm) "取消编辑 / 新增" else "＋ 新增代码")
                 }
                 if (showAddForm) {
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = { title = it },
-                    label = { Text("名称") },
-                    singleLine = true,
-                )
-                OutlinedTextField(
-                    value = code,
-                    onValueChange = { code = it },
-                    label = { Text("代码（允许多行十六进制）") },
-                    minLines = 2,
-                )
-                Text("代码类型（需与来源一致）")
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(CheatFormat.CODE_BREAKER, CheatFormat.GAME_SHARK).forEach { option ->
-                        TextButton(onClick = { format = option }) {
-                            Text(if (format == option) "✓ " + (if (option == CheatFormat.CODE_BREAKER) "CodeBreaker" else "GameShark") else if (option == CheatFormat.CODE_BREAKER) "CodeBreaker" else "GameShark")
+                    Text(if (editingId == null) "添加金手指" else "编辑已保存代码（仅关闭状态可编辑）")
+                    OutlinedTextField(
+                        value = title,
+                        onValueChange = { title = it },
+                        label = { Text("名称") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = code,
+                        onValueChange = { code = it },
+                        label = { Text("代码（允许多行十六进制）") },
+                        minLines = 2,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Text("代码类型（与代码来源保持一致）")
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(CheatFormat.CODE_BREAKER, CheatFormat.GAME_SHARK, CheatFormat.RAW).forEach { option ->
+                            TextButton(onClick = { format = option }) {
+                                Text((if (format == option) "✓ " else "") + option.name)
+                            }
                         }
                     }
-                }
-                Button(
-                    onClick = {
-                        runCatching {
-                            store.add(gameId, title, code, format)
-                            entries = store.read(gameId)
-                            title = ""
-                            code = ""
-                            error = null
-                        }.onFailure { error = it.message ?: "无法保存代码" }
-                    },
-                ) { Text("保存代码") }
+                    Button(
+                        enabled = title.isNotBlank() && CheatCodeValidator.isPlausibleHexCode(code),
+                        onClick = {
+                            runCatching {
+                                val id = editingId
+                                if (id == null) {
+                                    store.add(gameId, title, code, format)
+                                } else {
+                                    require(!needsRestart && id !in potentiallyActive) {
+                                        "该代码刚刚关闭，请重启游戏后再编辑"
+                                    }
+                                    store.update(gameId, id, title, code, format)
+                                }
+                                entries = store.read(gameId)
+                                title = ""
+                                code = ""
+                                editingId = null
+                                showAddForm = false
+                                error = null
+                            }.onFailure { error = "保存失败：${it.message}" }
+                        },
+                    ) { Text(if (editingId == null) "保存新代码" else "保存修改") }
+                    Text("编辑不会自动启用代码。启用前请核对游戏版本并备份存档。")
                 }
                 Button(onClick = onOpenSaveEditor) { Text("打开6V存档编辑器") }
                 if (error != null) Text(error!!)
