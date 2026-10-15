@@ -78,11 +78,24 @@ object EmeraldQuickSavePatcher {
         error("无法生成符合性格与闪光要求的精灵，请重试")
     }
 
-    fun addToFirstEmptyBox(input: ByteArray, species: Int, nickname: ByteArray, pp: Int, personality: Long, experience: Long = 0): Gift {
+    fun addToFirstEmptyBox(
+        input: ByteArray,
+        species: Int,
+        nickname: ByteArray,
+        pp: Int,
+        personality: Long,
+        experience: Long = 0,
+        ivs: List<Int> = List(6) { 31 },
+        evs: List<Int> = List(6) { 0 },
+    ): Gift {
         require(species in 1..251 || species in 277..411) { "不支持的精灵内部编号" }
         require(nickname.size == 11 && nickname[0] != 0xFF.toByte()) { "精灵名称读取失败" }
         require(pp in 1..64 && personality in 0..0xFFFFFFFFL)
         require(experience in 0..0xFFFFFFFFL) { "经验值超出存档格式范围" }
+        require(ivs.size == 6 && ivs.all { it in 0..31 }) { "IV必须为6项，每项0～31" }
+        require(evs.size == 6 && evs.all { it in 0..255 } && evs.sum() <= 510) {
+            "EV必须为6项，每项0～255，总和不超过510"
+        }
         val offsets = sections(input)
         val storage = ByteArray(33744)
         var copied = 0
@@ -108,14 +121,19 @@ object EmeraldQuickSavePatcher {
         val growth = order.indexOf(0) * 12
         val attacks = order.indexOf(1) * 12
         val misc = order.indexOf(3) * 12
+        val effort = order.indexOf(2) * 12
         put16(plain, growth, species)
         put32(plain, growth + 4, experience) // level is derived from experience on withdrawal
         plain[growth + 9] = 70
         put16(plain, attacks, 33) // Tackle; PP comes from this ROM's move table
         plain[attacks + 8] = pp.toByte()
+        repeat(6) { plain[effort + it] = evs[it].toByte() }
         plain[misc + 1] = 0xFF.toByte()
         put16(plain, misc + 2, 1 or (3 shl 7) or (4 shl 11))
-        put32(plain, misc + 4, 0x3FFFFFFF) // six perfect IVs, no egg or second ability bit
+        val packedIvs = ivs.foldIndexed(0L) { index, packed, iv ->
+            packed or (iv.toLong() shl (index * 5))
+        }
+        put32(plain, misc + 4, packedIvs) // keep egg and ability flags cleared
         put16(record, 28, (0 until 24).sumOf { u16(plain, it * 2) } and 65535)
         repeat(12) { put32(record, 32 + it * 4, u32(plain, it * 4) xor personality xor trainer) }
         record.copyInto(storage, 4 + index * 80)
