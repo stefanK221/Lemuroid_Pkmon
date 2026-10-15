@@ -35,6 +35,7 @@ fun CheatManagerDialog(
     var entries by remember(gameId) { mutableStateOf(store.read(gameId)) }
     var title by remember { mutableStateOf("") }
     var code by remember { mutableStateOf("") }
+    var format by remember { mutableStateOf(CheatFormat.CODE_BREAKER) }
     var error by remember { mutableStateOf<String?>(null) }
 
     AlertDialog(
@@ -59,18 +60,26 @@ fun CheatManagerDialog(
                     label = { Text("代码（允许多行十六进制）") },
                     minLines = 2,
                 )
+                Text("代码类型（需与来源一致）")
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(CheatFormat.CODE_BREAKER, CheatFormat.GAME_SHARK).forEach { option ->
+                        TextButton(onClick = { format = option }) {
+                            Text(if (format == option) "✓ ${option.name}" else option.name)
+                        }
+                    }
+                }
                 if (error != null) Text(error!!)
                 Button(
                     onClick = {
                         runCatching {
-                            store.add(gameId, title, code, CheatFormat.CODE_BREAKER)
+                            store.add(gameId, title, code, format)
                             entries = store.read(gameId)
                             title = ""
                             code = ""
                             error = null
                         }.onFailure { error = it.message ?: "无法保存代码" }
                     },
-                ) { Text("保存 CodeBreaker 代码") }
+                ) { Text("保存代码（尚不能生效）") }
                 entries.forEach { item ->
                     Row(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.weight(1f)) {
