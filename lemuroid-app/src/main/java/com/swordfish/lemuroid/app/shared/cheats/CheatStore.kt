@@ -41,6 +41,25 @@ class CheatStore(context: Context) {
         return entry
     }
 
+    /** Editing an enabled cheat is unsafe: disable it and restart first. */
+    fun update(gameId: String, id: String, title: String, code: String, format: CheatFormat) {
+        require(title.isNotBlank()) { "Name is required" }
+        require(CheatCodeValidator.isPlausibleHexCode(code)) { "Invalid hexadecimal cheat code" }
+        val existing = read(gameId)
+        val current = existing.firstOrNull { it.id == id } ?: error("Cheat was deleted")
+        require(!current.enabled) { "Disable this cheat before editing" }
+        save(
+            gameId,
+            existing.map { entry ->
+                if (entry.id == id) {
+                    entry.copy(title = title.trim(), code = CheatCodeValidator.normalize(code), format = format)
+                } else {
+                    entry
+                }
+            },
+        )
+    }
+
     fun setEnabled(gameId: String, id: String, enabled: Boolean) {
         save(gameId, read(gameId).map { if (it.id == id) it.copy(enabled = enabled) else it })
     }
