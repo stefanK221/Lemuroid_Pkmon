@@ -62,7 +62,8 @@ def party_records(data, sections):
         results.append((start, plain, key, iv_off, old_ivs))
     return results
 
-def patch_six_v(raw):
+def patch_six_v(raw, selected_slots=None):
+    """Patch all party members, or a specified set of 1-based party positions."""
     if len(raw) != 131072:
         raise ValueError("Expected 128 KiB save")
     old = bytearray(raw)
@@ -70,7 +71,12 @@ def patch_six_v(raw):
     records = party_records(old, sections)
     output = old[:]
     report = []
-    for start, plain, key, iv_off, ivs in records:
+    allowed = set(range(1, len(records) + 1)) if selected_slots is None else set(selected_slots)
+    if not allowed or any(not isinstance(slot, int) or slot < 1 or slot > len(records) for slot in allowed):
+        raise ValueError("Selected party positions must exist and be between 1 and 6")
+    for position, (start, plain, key, iv_off, ivs) in enumerate(records, start=1):
+        if position not in allowed:
+            continue
         value = u32(plain, iv_off)
         w32(plain, iv_off, (value & 0xC0000000) | 0x3FFFFFFF)
         for off in range(0, 48, 4):
@@ -80,7 +86,8 @@ def patch_six_v(raw):
     section = sections[1]
     w16(output, section + 0xff6, checksum(output[section:section + LENGTHS[1]]))
     _, verified = active_sections(output)
-    if not all(all(iv == 31 for iv in record[-1]) for record in party_records(output, verified)):
+    after = party_records(output, verified)
+    if not all(all(iv == 31 for iv in after[i-1][-1]) for i in allowed):
         raise AssertionError("6V postcondition failed")
     return bytes(output), report
 
@@ -88,9 +95,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("save", type=Path)
     parser.add_argument("output", type=Path)
+    parser.add_argument("--slot", type=int, action="append", help="1-based party position (repeatable); default all")
     args = parser.parse_args()
     if args.save.resolve() == args.output.resolve():
         parser.error("Refusing to overwrite the input save")
-    result, before = patch_six_v(args.save.read_bytes())
+    result, before = patch_six_v(args.save.read_bytes(), args.slot)
     args.output.write_bytes(result)
     print(f"Patched {len(before)} team members; checksum validation passed.")
