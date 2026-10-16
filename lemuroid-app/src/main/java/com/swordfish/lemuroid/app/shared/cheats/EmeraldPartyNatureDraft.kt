@@ -52,6 +52,10 @@ object EmeraldPartyNatureDraft {
             .first { u16(input, it + 0xff4) == 1 }
         val start = base + 0x238 + (position - 1) * 100
         val oldPid = u32(input, start)
+        // Unown form and Spinda spot pattern depend on PID. Refuse an edit that
+        // would silently change those species\u0027 visible identity.
+        val species = save.partySpecies[position - 1]
+        require(species != 201 && species != 327) { "该物种的形态或花纹依赖PID，暂不支持修改性格" }
         val trainer = u32(input, start + 4)
         val newPid = previewPid(input, position, nature)
         val output = input.copyOf()
