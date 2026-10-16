@@ -38,6 +38,8 @@ int main(void) {
 	assert(read16(&c,b1+0x654)==1 && (read16(&c,b1+0x656)^(key&65535))==99);
 	write16(&c,b1+0x656,98^(key&65535)); gbaPlusQuickFrame(&c);
 	assert((read16(&c,b1+0x656)^(key&65535))==99);
+	assert(gbaPlusQuickCommand("GBA_PLUS_QUICK_V1:4")); assert(gbaPlusQuickFlags==4);
+\tassert(gbaPlusQuickCommand("GBA_PLUS_QUICK_V1:7")); assert(gbaPlusQuickFlags==7);
 	gbaPlusQuickReset(); write32(&c,b1+0x490,100^key); writes=0; gbaPlusQuickFrame(&c);
 	assert(writes==0 && (read32(&c,b1+0x490)^key)==100);
 	for(unsigned i=0;i<16;++i) { write16(&c,b1+0x650+i*4,4); write16(&c,b1+0x652+i*4,1^(key&65535)); }
