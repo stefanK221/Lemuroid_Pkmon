@@ -58,6 +58,12 @@ Actual Thumb disassembly of the SHA-256-matched user ROM shows a useful delivery
 
 **Still not safe to enable EXP sharing:** there is no implemented proof that every extra party member can be routed through the native controller without replaying rewards or corrupting the game's party loop state. The hooked mGBA core currently has no battle-CPU hook at all. Adding UI flags alone does not implement this feature.
 
+## Exact GETEXP participant gate and divisor (verified by local ROM disassembly)
+
+In GETEXP phase 2, the game counts **only battle participants** in `r5`: it loops six slots, reads each Pokémon's `GetMonData` fields `0x0B` (species) and `0x39` (current HP), and at `0x0804A440..0x0804A44A` increments the participant count only if the slot's battle participant bit is set. Phase 2 computes base EXP from the defeated species and level, then divides it by that participant count (with a minimum of one). Consequently, *simply making every party member a battle participant is NOT full EXP sharing*: doing so dilutes each recipient's award by the new party count. The existing feature flag is not connected to this native calculation.
+
+Safe implementation must (1) identify and preserve real participants' original award, (2) explicitly add full awards for nonparticipants, and (3) run all recipients through the game's native controller so that level-ups and moves remain intact. Altering the party EXP bytes each frame is not safe. **No battle patch is activated.**
+
 ## Experience-sharing delivery blocker
 
 The script command GETEXP address is located, but there is still no verified *per-recipient native award callback*, battle event identity, or safe patch/ABI. No game runtime experience-sharing hook has been installed. The existing C/Kotlin EXP allocation and dispatch code is **unit-test-only scaffolding** and must not be presented as an enabled gameplay feature.
