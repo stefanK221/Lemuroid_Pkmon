@@ -42,15 +42,31 @@ fun QuickToolsDialog(
     var ivText by remember { mutableStateOf("31,31,31,31,31,31") }
     var evText by remember { mutableStateOf("0,0,0,0,0,0") }
     var dexMap by remember { mutableStateOf<Map<Int, Int>>(emptyMap()) }
+    var romNames by remember { mutableStateOf<Map<Int, String>>(emptyMap()) }
+    val displayNames = romNames + QuickToolsProfile.namedSpecies
     var natureMenuOpen by remember { mutableStateOf(false) }
     var confirmation by remember { mutableStateOf<String?>(null) }
     var action by remember { mutableStateOf<(() -> Unit)?>(null) }
     LaunchedEffect(fileName) {
         val result = withContext(Dispatchers.IO) { runCatching { QuickToolsProfile.verify(context, fileName) } }
         result.onSuccess { verified ->
-            runCatching { verified.dexToSpecies() }
-                .onSuccess { dexMap = it; profile = verified; message = "ROM图鉴映射验证通过；请核对游戏中的图鉴显示。" }
-                .onFailure { profile = null; message = it.message ?: "ROM图鉴映射失败" }
+            val loaded = withContext(Dispatchers.IO) {
+                runCatching {
+                    val mapping = verified.dexToSpecies()
+                    val names = mapping.values.distinct()
+                        .filter { it in 1..251 || it in 277..411 }
+                        .mapNotNull { species ->
+                            verified.readableSpeciesName(species)?.let { species to it }
+                        }.toMap()
+                    mapping to names
+                }
+            }
+            loaded.onSuccess { (mapping, names) ->
+                dexMap = mapping
+                romNames = names
+                profile = verified
+                message = "ROM图鉴映射已验证；已解析名称${(names + QuickToolsProfile.namedSpecies).size}种。请核对游戏图鉴。"
+            }.onFailure { profile = null; message = it.message ?: "ROM图鉴映射失败" }
         }
             .onFailure { message = it.message ?: "无法识别此游戏" }
     }
@@ -118,28 +134,28 @@ fun QuickToolsDialog(
                 val number = search.trim().toIntOrNull()
                 val isNumericSearch = search.trim().isNotEmpty() && search.trim().all { it.isDigit() }
                 val resolvedSpecies = number?.let { dexMap[it] }?.takeIf { it in 1..251 || it in 277..411 }
-                val nameAvailable = resolvedSpecies?.let { QuickToolsProfile.namedSpecies[it] } != null
+                val nameAvailable = resolvedSpecies?.let { displayNames[it] } != null
                 if (number != null) {
                     val mappedSpecies = resolvedSpecies
-                    val mappedName = mappedSpecies?.let { QuickToolsProfile.namedSpecies[it] }
+                    val mappedName = mappedSpecies?.let { displayNames[it] }
                     Text(if (mappedSpecies == null) "编号 #$number 当前不支持领取" else "编号 #$number 对应：${mappedName ?: "名称暂未收录，请先核对游戏图鉴"}")
                 }
                 val candidates = if (number != null) {
                     listOfNotNull(dexMap[number]?.takeIf { it in 1..251 || it in 277..411 }?.let { number to it })
                 } else {
-                    QuickToolsProfile.namedSpecies.entries.filter { (_, name) ->
+                    displayNames.entries.filter { (_, name) ->
                         search.isBlank() || name.contains(search, ignoreCase = true)
                     }.filter { (id, _) -> id in 1..251 || id in 277..411 }
                         .take(8).mapNotNull { (id, _) -> speciesToDex[id]?.let { it to id } }
                 }
                 if (candidates.isEmpty()) Text("没有可安全领取的对应精灵，请检查编号或名称；部分精灵尚未开放领取。")
-                candidates.filter { (_, species) -> QuickToolsProfile.namedSpecies.containsKey(species) }.forEach { (dex, species) ->
+                candidates.filter { (_, species) -> displayNames.containsKey(species) }.forEach { (dex, species) ->
                     TextButton(onClick = { selected = species }) {
-                        val label = QuickToolsProfile.namedSpecies[species] ?: "精灵"
+                        val label = displayNames[species] ?: "精灵"
                         Text((if (selected == species) "✓ " else "") + "$label · 图鉴#$dex")
                     }
                 }
-                Text("已选：${QuickToolsProfile.namedSpecies[selected] ?: "精灵"} · 图鉴#${speciesToDex[selected] ?: "?"}")
+                Text("已选：${displayNames[selected] ?: "精灵"} · 图鉴#${speciesToDex[selected] ?: "?"}")
                 OutlinedTextField(
                     value = levelText,
                     onValueChange = { levelText = it.filter { char -> char.isDigit() }.take(3) },
@@ -197,7 +213,7 @@ fun QuickToolsDialog(
                     require(!isNumericSearch || (nameAvailable && selected == resolvedSpecies)) { "请先确认编号对应的精灵名称并点选" }
                     val selectedIvs = requireNotNull(customIvs).toList()
                     val selectedEvs = requireNotNull(customEvs).toList()
-                    confirmation = "将新增${QuickToolsProfile.namedSpecies[id] ?: "精灵"}（图鉴#${speciesToDex[id]}，Lv.${selectedLevel ?: "无效"}，IV:$selectedIvs，EV:$selectedEvs，性格：${selectedNature?.let { natureNames[it] } ?: "随机"}，${if (selectedShiny) "闪光" else "普通"}）到第一个空盒位。会先备份并重启游戏，未保存的进度会丢失。已在游戏内保存后再执行。"
+                    confirmation = "将新增${displayNames[id] ?: "精灵"}（图鉴#${speciesToDex[id]}，Lv.${selectedLevel ?: "无效"}，IV:$selectedIvs，EV:$selectedEvs，性格：${selectedNature?.let { natureNames[it] } ?: "随机"}，${if (selectedShiny) "闪光" else "普通"}）到第一个空盒位。会先备份并重启游戏，未保存的进度会丢失。已在游戏内保存后再执行。"
                     action = {
                         val verified = requireNotNull(profile)
                         require((selectedLevel ?: 0) in 1..100) { "请输入1～100的有效等级" }
