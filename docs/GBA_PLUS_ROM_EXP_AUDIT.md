@@ -27,6 +27,10 @@ Disassembly of the actual handler at `0x0804A32C` confirms this is a **seven-sta
 
 This is a concrete discovery of the experience-award **command entry point**, NOT yet a verified code patch. Need Thumb disassembly of the roughly `0x9A4`-byte command region, trace the normal per-party distribution and call sites, and capture in-game behavior before changing command logic. Never replace GETEXP with a guessed per-frame XP write.
 
+## GETEXP direct-call graph (exact ROM, static analysis)
+
+The Thumb-1 BL decoding pass in `tools/analyze_gba_plus_rom.py` now enumerates **57 direct BL instructions** between `0x4A32C` and `0x4ACD0`, resolves each target, and refuses out-of-ROM destinations or unexpected signatures. This narrows the XP-award investigation to **17 distinct direct callees** rather than arbitrary data writes. Two especially frequent targets are `0x0806A518` (**32 calls**, likely a shared Pokémon attribute accessor; verify) and `0x082E7540` (**7 calls**, purpose not yet identified). Both require call-site and data-flow inspection before installing any hook. A static BL scan can also match inlined literal data, so individual sites still require instruction-flow validation.
+
 ## Experience-sharing delivery blocker
 
 The script command GETEXP address is located, but there is still no verified *per-recipient native award callback*, battle event identity, or safe patch/ABI. No game runtime experience-sharing hook has been installed. The existing C/Kotlin EXP allocation and dispatch code is **unit-test-only scaffolding** and must not be presented as an enabled gameplay feature.
