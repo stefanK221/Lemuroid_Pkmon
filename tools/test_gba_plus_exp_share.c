@@ -31,6 +31,10 @@ int main(void) {
     assert(!gbaPlusExpGuardAccept(&guard, 0));
     gbaPlusExpGuardReset(&guard);
     assert(gbaPlusExpGuardAccept(&guard, 42));
+    assert(gbaPlusBattleExpEventId((GbaPlusBattleExpIdentity){0, 1}) == 0);
+    assert(gbaPlusBattleExpEventId((GbaPlusBattleExpIdentity){1, 0}) == 0);
+    assert(gbaPlusBattleExpEventId((GbaPlusBattleExpIdentity){1, 2}) !=
+           gbaPlusBattleExpEventId((GbaPlusBattleExpIdentity){2, 1}));
     GbaPlusExpDispatchState battle = {0};
     AwardLog once = {0};
     assert(gbaPlusDispatchBattleEvent(&battle, 123, 750, party, 6, true, record_award, &once));
