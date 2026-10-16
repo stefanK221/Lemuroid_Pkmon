@@ -118,8 +118,8 @@ fun QuickToolsDialog(
                 val number = search.trim().toIntOrNull()
                 if (number != null) {
                     val mappedSpecies = dexMap[number]?.takeIf { it in 1..251 || it in 277..411 }
-                    val mappedName = mappedSpecies?.let { QuickToolsProfile.namedSpecies[it] ?: profile?.speciesName(it) }
-                    Text(if (mappedSpecies == null) "编号 #$number 当前不支持领取" else "编号 #$number 对应：${mappedName ?: "未知名称，请勿领取"}")
+                    val mappedName = mappedSpecies?.let { QuickToolsProfile.namedSpecies[it] }
+                    Text(if (mappedSpecies == null) "编号 #$number 当前不支持领取" else "编号 #$number 对应：${mappedName ?: "名称暂未收录，请先核对游戏图鉴"}")
                 }
                 val candidates = if (number != null) {
                     listOfNotNull(dexMap[number]?.takeIf { it in 1..251 || it in 277..411 }?.let { number to it })
