@@ -134,7 +134,7 @@ def analyze(path: Path) -> dict:
         "party_slot_index_address": "0x020244EC",
         "warning": "original participant/EXP-item branches remain part of native progression"
     }
-    if rom[0x4A4A8:0x4A4AE] != bytes.fromhex("50 43 07 21 9d f2"):
+    if rom[0x4A4AA:0x4A4B0] != bytes.fromhex("50 43 07 21 9d f2"):
         raise ValueError("GETEXP stock experience formula changed")
     battle_dispatch_report = {
         "table_file_offset": hex(battle_dispatch),
