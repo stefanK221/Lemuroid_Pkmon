@@ -44,6 +44,8 @@ class EmeraldPartyLevelPlanTest {
         for (i in 1 until 12) put32(b, party + 32 + i * 4, trainer)
         put16(b, party + 28, 6)
         b[party + 84] = 50
+        put16(b, party + 86, 120)
+        put16(b, party + 88, 120)
         repeat(14) { checksum(b, it) }
         return b
     }
