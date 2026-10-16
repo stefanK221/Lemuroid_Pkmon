@@ -9,6 +9,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -80,16 +82,21 @@ fun CheatManagerDialog(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text("金手指可能改变游戏内存；即使停止执行，穿墙等效果仍可能持续。请先备份存档。")
+                Text("金手指可能改变游戏内存；即使停止执行，穿墙等效果仍可能持续。请先备份存档。", color = MaterialTheme.colorScheme.secondary)
+                Text("快捷入口", style = MaterialTheme.typography.titleMedium)
                 Button(onClick = onOpenQuickTools) { Text("常用功能：金钱 / 大师球 / 指定精灵") }
-                Text("已保存金手指（${entries.size}），启用中 ${entries.count { it.enabled }}")
+                HorizontalDivider()
+                Text("已保存 ${entries.size} 项 · 启用 ${entries.count { it.enabled }} 项", style = MaterialTheme.typography.titleMedium)
                 OutlinedTextField(
                     value = filterText,
-                    onValueChange = { filterText = it },
+                    onValueChange = { filterText = it.take(80) },
                     label = { Text("搜索金手指名称或代码") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                 )
+                if (filterText.isNotEmpty() || showEnabledOnly || formatFilter != null) {
+                    TextButton(onClick = { filterText = ""; showEnabledOnly = false; formatFilter = null }) { Text("清除所有筛选条件") }
+                }
                 TextButton(onClick = { showEnabledOnly = !showEnabledOnly }) {
                     Text(if (showEnabledOnly) "✓ 仅看已启用（点击显示全部）" else "仅查看已启用")
                 }
@@ -249,7 +256,8 @@ fun CheatManagerDialog(
                     ) { Text(if (editingId == null) "保存新代码" else "保存修改") }
                     Text("编辑不会自动启用代码。启用前请核对游戏版本并备份存档。")
                 }
-                Button(onClick = onOpenSaveEditor) { Text("打开6V存档编辑器") }
+                HorizontalDivider()
+                Button(onClick = onOpenSaveEditor) { Text("队伍属性与存档管理（等级 / 性格 / IV / EV）") }
                 if (error != null) Text(error!!)
                 if (needsRestart || potentiallyActive.isNotEmpty() || lastDisabledIds.isNotEmpty()) {
                     Text("⚠️ 已请求关闭金手指，但穿墙等内存效果可能持续。请在游戏内正常存档后退出并重新进入。不要加载开启金手指时制作的即时存档。")
