@@ -30,9 +30,13 @@ def disassemble(path: Path) -> str:
         subprocess.run(["clang", "--target=armv4t-none-eabi", "-c",
                         "getexp.S", "-o", "getexp.o"], cwd=temp, check=True)
         result = subprocess.run(["llvm-objdump", "-d", "--triple=thumbv4t",
-                                 "getexp.o"], cwd=temp, text=True, check=True,
+                                 "--adjust-vma=0x804a32c", "getexp.o"], cwd=temp, text=True, check=True,
                                 stdout=subprocess.PIPE)
-        return result.stdout
+        return ("# GETEXP ROM address range: 0x0804A32C..0x0804ACD0\\n"
+                "# State entrypoints: 0x0804A38C 0x0804A3A8 0x0804A414 "
+                "0x0804A52E 0x0804A850 0x0804A954 0x0804AC40\\n"
+                "# WARNING: switch jump table and literal pools are data, not executable instructions.\\n"
+                + result.stdout)
 
 
 if __name__ == "__main__":
