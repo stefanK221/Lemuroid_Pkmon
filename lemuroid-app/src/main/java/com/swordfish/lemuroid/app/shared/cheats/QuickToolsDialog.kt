@@ -116,8 +116,11 @@ fun QuickToolsDialog(
                     Text("可领取的ROM图鉴编号范围：${availableDexNumbers.first()}～${availableDexNumbers.last()}（部分编号不支持，请以查询结果为准）")
                 }
                 val number = search.trim().toIntOrNull()
+                val isNumericSearch = search.trim().isNotEmpty() && search.trim().all { it.isDigit() }
+                val resolvedSpecies = number?.let { dexMap[it] }?.takeIf { it in 1..251 || it in 277..411 }
+                val nameAvailable = resolvedSpecies?.let { QuickToolsProfile.namedSpecies[it] } != null
                 if (number != null) {
-                    val mappedSpecies = dexMap[number]?.takeIf { it in 1..251 || it in 277..411 }
+                    val mappedSpecies = resolvedSpecies
                     val mappedName = mappedSpecies?.let { QuickToolsProfile.namedSpecies[it] }
                     Text(if (mappedSpecies == null) "编号 #$number 当前不支持领取" else "编号 #$number 对应：${mappedName ?: "名称暂未收录，请先核对游戏图鉴"}")
                 }
@@ -130,7 +133,7 @@ fun QuickToolsDialog(
                         .take(8).mapNotNull { (id, _) -> speciesToDex[id]?.let { it to id } }
                 }
                 if (candidates.isEmpty()) Text("没有可安全领取的对应精灵，请检查编号或名称；部分精灵尚未开放领取。")
-                candidates.forEach { (dex, species) ->
+                candidates.filter { (_, species) -> QuickToolsProfile.namedSpecies.containsKey(species) }.forEach { (dex, species) ->
                     TextButton(onClick = { selected = species }) {
                         val label = QuickToolsProfile.namedSpecies[species] ?: "精灵"
                         Text((if (selected == species) "✓ " else "") + "$label · 图鉴#$dex")
@@ -185,12 +188,13 @@ fun QuickToolsDialog(
                 TextButton(onClick = { shiny = !shiny }) {
                     Text(if (shiny) "✓ 闪光精灵（点击改为普通）" else "普通精灵（点击设为闪光）")
                 }
-                Button(enabled = profile != null && dexMap.isNotEmpty() && statsValid && (levelText.toIntOrNull() ?: 0) in 1..100, onClick = {
+                Button(enabled = profile != null && dexMap.isNotEmpty() && statsValid && (levelText.toIntOrNull() ?: 0) in 1..100 && (!isNumericSearch || (nameAvailable && selected == resolvedSpecies)), onClick = {
                     val id = selected
                     val selectedNature = nature
                     val selectedShiny = shiny
                     val selectedLevel = levelText.toIntOrNull()
                     require(id in 1..251 || id in 277..411) { "此精灵尚未开放领取" }
+                    require(!isNumericSearch || (nameAvailable && selected == resolvedSpecies)) { "请先确认编号对应的精灵名称并点选" }
                     val selectedIvs = requireNotNull(customIvs).toList()
                     val selectedEvs = requireNotNull(customEvs).toList()
                     confirmation = "将新增${QuickToolsProfile.namedSpecies[id] ?: "精灵"}（图鉴#${speciesToDex[id]}，Lv.${selectedLevel ?: "无效"}，IV:$selectedIvs，EV:$selectedEvs，性格：${selectedNature?.let { natureNames[it] } ?: "随机"}，${if (selectedShiny) "闪光" else "普通"}）到第一个空盒位。会先备份并重启游戏，未保存的进度会丢失。已在游戏内保存后再执行。"
