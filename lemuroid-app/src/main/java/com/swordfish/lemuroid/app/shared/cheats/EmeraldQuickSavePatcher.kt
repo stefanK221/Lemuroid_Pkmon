@@ -88,7 +88,7 @@ object EmeraldQuickSavePatcher {
         ivs: List<Int> = List(6) { 31 },
         evs: List<Int> = List(6) { 0 },
     ): Gift {
-        require(species in 1..251 || species in 277..411) { "不支持的精灵内部编号" }
+        require(species in 1..411) { "不支持的精灵内部编号" }
         require(nickname.size == 11 && nickname[0] != 0xFF.toByte()) { "精灵名称读取失败" }
         require(pp in 1..64 && personality in 0..0xFFFFFFFFL)
         require(experience in 0..0xFFFFFFFFL) { "经验值超出存档格式范围" }
