@@ -10,6 +10,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.OutlinedTextField
@@ -37,6 +39,7 @@ fun QuickToolsDialog(
     var flags by remember { mutableStateOf(onGetFlags()) }
     var message by remember { mutableStateOf("正在核对游戏版本…") }
     var search by remember { mutableStateOf("") }
+    var showGiftDetails by remember { mutableStateOf(false) }
     var selected by remember { mutableStateOf(6) }
     var nature by remember { mutableStateOf<Int?>(null) }
     var shiny by remember { mutableStateOf(false) }
@@ -117,6 +120,7 @@ fun QuickToolsDialog(
                 HorizontalDivider()
                 Text("游戏资源", style = MaterialTheme.typography.titleMedium)
                 Text("金钱与大师球仅在本次游戏会话内持续补充；重新启动后需再次开启。")
+                Text("状态：金钱 ${if (flags and 1 != 0) "开启" else "关闭"} · 大师球 ${if (flags and 2 != 0) "开启" else "关闭"}", color = MaterialTheme.colorScheme.secondary)
                 Button(enabled = profile != null, onClick = { requestToggle(1, "无限金钱") }) {
                     Text(if (flags and 1 != 0) "关闭无限金钱（已开启）" else "开启无限金钱（保持999999）")
                 }
@@ -131,7 +135,8 @@ fun QuickToolsDialog(
                 Text("领取精灵到电脑", style = MaterialTheme.typography.titleMedium)
                 Text("加入第一个空盒位，不覆盖已有精灵；默认撞击，不自动补图鉴。执行前请在游戏内保存。")
                 Text("按ROM图鉴序号检索（不是存档内部物种ID）。如游戏显示的编号不符，请停止并反馈。")
-                OutlinedTextField(value = search, onValueChange = { search = it }, label = { Text("搜索名称或ROM图鉴编号") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                OutlinedTextField(value = search, onValueChange = { search = it.take(30) }, label = { Text("搜索名称或ROM图鉴编号") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                if (search.isNotBlank()) TextButton(onClick = { search = "" }) { Text("清除搜索") }
                 val speciesToDex = dexMap.entries.associate { it.value to it.key }
                 val availableDexNumbers = dexMap.entries.filter { (_, species) -> species in 1..251 || species in 277..411 }.map { it.key }.sorted()
                 if (availableDexNumbers.isNotEmpty()) {
@@ -161,7 +166,11 @@ fun QuickToolsDialog(
                         Text((if (selected == species) "✓ " else "") + "$label · 图鉴#$dex")
                     }
                 }
-                Text("已选：${displayNames[selected] ?: "精灵"} · 图鉴#${speciesToDex[selected] ?: "?"}")
+                Text("已选：${displayNames[selected] ?: "精灵"} · 图鉴#${speciesToDex[selected] ?: "?"}", style = MaterialTheme.typography.titleSmall)
+                TextButton(onClick = { showGiftDetails = !showGiftDetails }) {
+                    Text(if (showGiftDetails) "收起高级参数（等级、IV/EV、性格） ▲" else "展开领取参数（等级、IV/EV、性格） ▼")
+                }
+                if (showGiftDetails) {
                 OutlinedTextField(
                     value = levelText,
                     onValueChange = { levelText = it.filter { char -> char.isDigit() }.take(3) },
@@ -179,6 +188,7 @@ fun QuickToolsDialog(
                 val customIvs = parseStats(ivText, 31)
                 val customEvs = parseStats(evText, 255)
                 val statsValid = customIvs != null && customEvs != null && customEvs.sum() <= 510
+                TextButton(onClick = { ivText = "31,31,31,31,31,31"; evText = "0,0,0,0,0,0" }) { Text("恢复默认：6V / 0努力值") }
                 OutlinedTextField(value = ivText, onValueChange = { ivText = it.take(64) }, label = { Text("领取时IV（6项0～31）") }, modifier = Modifier.fillMaxWidth(), singleLine = true, isError = customIvs == null)
                 OutlinedTextField(value = evText, onValueChange = { evText = it.take(64) }, label = { Text("领取时EV（各0～255，总和≤510）") }, modifier = Modifier.fillMaxWidth(), singleLine = true, isError = customEvs == null || customEvs.sum() > 510)
                 if (!statsValid) Text("请检查IV/EV：均需6项，且EV总和不超过510")
@@ -213,6 +223,7 @@ fun QuickToolsDialog(
                     Text(if (shiny) "✓ 闪光精灵（点击改为普通）" else "普通精灵（点击设为闪光）")
                 }
                 HorizontalDivider()
+                }
                 Button(enabled = profile != null && dexMap.isNotEmpty() && statsValid && (levelText.toIntOrNull() ?: 0) in 1..100 && (!isNumericSearch || (nameAvailable && selected == resolvedSpecies)), onClick = {
                     val id = selected
                     val selectedNature = nature
