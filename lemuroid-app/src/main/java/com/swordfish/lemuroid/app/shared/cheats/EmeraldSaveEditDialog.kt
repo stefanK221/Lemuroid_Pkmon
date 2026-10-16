@@ -30,7 +30,7 @@ import androidx.compose.ui.unit.dp
  * Do not import the edited save into an emulator until the game has been closed and a backup exists.
  */
 @Composable
-fun EmeraldSaveEditDialog(onDismiss: () -> Unit, onReadLiveSave: () -> ByteArray, onApplyLiveSave: (ByteArray) -> Unit) {
+fun EmeraldSaveEditDialog(fileName: String, onDismiss: () -> Unit, onReadLiveSave: () -> ByteArray, onApplyLiveSave: (ByteArray) -> Unit) {
     val context = LocalContext.current
     var saveBytes by remember { mutableStateOf<ByteArray?>(null) }
     var pendingExport by remember { mutableStateOf<ByteArray?>(null) }
@@ -51,6 +51,9 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit, onReadLiveSave: () -> ByteArray
     var customIvs by remember { mutableStateOf(List(6) { "31" }) }
     var customEvs by remember { mutableStateOf(List(6) { "0" }) }
     var useCustomIvs by remember { mutableStateOf(false) }
+    var levelEdit by remember { mutableStateOf("50") }
+    var natureEdit by remember { mutableIntStateOf(0) }
+    var natureMenu by remember { mutableStateOf(false) }
     // Gen III EV order: HP, Attack, Defense, Speed, Sp. Attack, Sp. Defense.
     var liveSource by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf("选择128KB的游戏内存档 .sav；先备份原件。") }
@@ -375,6 +378,62 @@ fun EmeraldSaveEditDialog(onDismiss: () -> Unit, onReadLiveSave: () -> ByteArray
                                 Text("EV：${info.partyEvs[position - 1].joinToString("/")}")
                             }
                         }
+                    }
+                    if (liveSource) {
+                        Text("队伍等级 / 性格编辑（仅操作选中的一只）")
+                        OutlinedTextField(
+                            value = levelEdit,
+                            onValueChange = { levelEdit = it },
+                            label = { Text("目标等级 1～100") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true,
+                        )
+                        val natures = listOf("勤奋", "怕寂寞", "勇敢", "固执", "顽皮", "大胆", "坦率",
+                            "悠闲", "淘气", "乐天", "胆小", "急躁", "认真", "爽朗", "天真",
+                            "保守", "慢吞吞", "冷静", "害羞", "马虎", "温和", "温顺", "自大",
+                            "慎重", "浮躁")
+                        Box {
+                            Button(onClick = { natureMenu = true }) { Text("目标性格：" + natures[natureEdit] + " ▾") }
+                            DropdownMenu(expanded = natureMenu, onDismissRequest = { natureMenu = false }) {
+                                natures.forEachIndexed { index, label ->
+                                    DropdownMenuItem(text = { Text(label) }, onClick = {
+                                        natureEdit = index
+                                        natureMenu = false
+                                    })
+                                }
+                            }
+                        }
+                        Button(enabled = selected.size == 1, onClick = {
+                            runCatching {
+                                val original = requireNotNull(saveBytes)
+                                val position = selected.single()
+                                val species = info.partySpecies[position - 1]
+                                val verifiedRom = QuickToolsProfile.verify(context, fileName)
+                                val plan = EmeraldPartyLevelPlan.prepare(
+                                    original, position,
+                                    levelEdit.toIntOrNull() ?: error("请输入合法等级"),
+                                    verifiedRom::growthRate,
+                                )
+                                pendingPatch = EmeraldPartyLevelStatsWriter.preview(
+                                    original, plan, verifiedRom.baseStats(species),
+                                )
+                                patchSummary = "队伍第${position}只等级：${info.partyLevels[position - 1]} → ${plan.targetLevel}"
+                                showSaveConfirm = true
+                            }.onFailure { message = "等级修改失败：${it.message}" }
+                        }) { Text("修改选中精灵等级（备份并重启）") }
+                        Button(enabled = selected.size == 1, onClick = {
+                            runCatching {
+                                val original = requireNotNull(saveBytes)
+                                val position = selected.single()
+                                val verifiedRom = QuickToolsProfile.verify(context, fileName)
+                                pendingPatch = EmeraldPartyNatureStatsWriter.preview(
+                                    original, position, natureEdit,
+                                    verifiedRom.baseStats(info.partySpecies[position - 1]),
+                                )
+                                patchSummary = "队伍第${position}只性格 → ${natures[natureEdit]}"
+                                showSaveConfirm = true
+                            }.onFailure { message = "性格修改失败：${it.message}" }
+                        }) { Text("修改选中精灵性格（备份并重启）") }
                     }
                     if (liveSource) {
                         Button(enabled = if (individualMode) individualEdits.isNotEmpty() else selected.isNotEmpty(), onClick = {
