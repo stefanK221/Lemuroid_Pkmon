@@ -41,6 +41,24 @@ static bool gbaPlusAllocateFullExp(uint32_t award,
  * The caller owns transactional safety and must invoke this only at the
  * verified battle EXP event, not every emulator frame.
  */
+/*
+ * A battle hook must not replay a single KO award on every emulator frame.
+ * Keep a small per-battle event identity; reset on battle end/ROM unload.
+ */
+typedef struct {
+    uint64_t last_event;
+    bool initialized;
+} GbaPlusExpEventGuard;
+static void gbaPlusExpGuardReset(GbaPlusExpEventGuard* guard) {
+    if (guard) { guard->initialized = false; guard->last_event = 0; }
+}
+static bool gbaPlusExpGuardAccept(GbaPlusExpEventGuard* guard, uint64_t event_id) {
+    if (!guard || !event_id) return false;
+    if (guard->initialized && guard->last_event == event_id) return false;
+    guard->last_event = event_id;
+    guard->initialized = true;
+    return true;
+}
 typedef bool (*GbaPlusAwardExp)(void* context, size_t party_slot, uint32_t amount);
 static bool gbaPlusDispatchFullExp(uint32_t award,
                                    const GbaPlusPartyMember* members,
