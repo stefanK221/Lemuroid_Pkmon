@@ -17,3 +17,7 @@ jobs:
           python-version: '3.12'
       - name: Test save editor without sharing game files
         run: python -m unittest discover -s tools -p 'test_*.py' -v
+      - name: Verify native full-party EXP policy
+        run: |
+          cc -std=c11 -Wall -Wextra -Werror -Itools tools/test_gba_plus_exp_share.c -o /tmp/test_gba_plus_exp_share
+          /tmp/test_gba_plus_exp_share
