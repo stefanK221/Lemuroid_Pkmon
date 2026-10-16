@@ -110,6 +110,30 @@ class EmeraldPartyLevelPlanTest {
         assertEquals(6, EmeraldSaveInspector.inspect(changed).partySpecies[0])
     }
 
+    @Test fun levelAndNatureStatWriterPreviewsAreChecksummedAndPartyOnly() {
+        val source = fixture()
+        val old = source.copyOf()
+        val base = listOf(80, 82, 83, 80, 100, 100)
+        val plan = EmeraldPartyLevelPlan.prepare(source, 1, 75) { 3 }
+        val level = EmeraldPartyLevelStatsWriter.preview(source, plan, base)
+        val levelRead = EmeraldSaveInspector.inspect(level)
+        assertEquals(75, levelRead.partyLevels[0])
+        assertEquals(6, levelRead.partySpecies[0])
+        val nature = EmeraldPartyNatureStatsWriter.preview(source, 1, 7, base)
+        assertEquals(7L, u32(nature, offset(1) + 0x238) % 25)
+        assertEquals(6, EmeraldSaveInspector.inspect(nature).partySpecies[0])
+        assertArrayEquals(old, source)
+        val begin = offset(1) + 0x238
+        for (i in source.indices) {
+            val allowed = i in begin until begin + 100 ||
+                i in offset(1) + 0xff6 until offset(1) + 0xff8
+            if (!allowed) {
+                assertEquals("Level modified outside selected party at $i", source[i], level[i])
+                assertEquals("Nature modified outside selected party at $i", source[i], nature[i])
+            }
+        }
+    }
+
     @Test fun rejectsPositionsAndLevelsOutsideParty() {
         val save = fixture()
         for (position in listOf(0, 2, 7)) {
