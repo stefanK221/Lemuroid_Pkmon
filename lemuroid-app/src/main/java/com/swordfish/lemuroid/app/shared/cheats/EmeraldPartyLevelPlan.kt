@@ -84,7 +84,7 @@ object EmeraldPartyLevelPlan {
         require(position in 1..save.partyCount) { "只能选择当前队伍中的精灵" }
         require(targetLevel in 1..100) { "等级必须在1～100之间" }
         val species = save.partySpecies[position - 1]
-        require(species in 1..251 || species in 277..411) {
+        require(species in 1..411) {
             "该队伍精灵的物种尚未经过验证，禁止修改"
         }
         val rate = growthRateForSpecies(species)
