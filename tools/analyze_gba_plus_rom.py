@@ -152,7 +152,7 @@ def analyze(path: Path) -> dict:
         "requires_native_controller_per_member": True
     }
     if rom[0x4A440:0x4A44C] != bytes.fromhex(
-            "00 28 00 d0 01 35 20 1c 0c 21 20 f8"):
+            "08 68 41 46 08 40 00 28 00 d0 01 35"):
         # The exact register/branch signatures must be audited; fail closed.
         raise ValueError("GETEXP participant gate no longer matches")
     battle_dispatch_report = {
