@@ -3,7 +3,6 @@ package com.swordfish.lemuroid.app.shared.cheats
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -176,6 +175,8 @@ fun CheatManagerDialog(
                                 error = null
                             }.onFailure { error = "操作失败：${it.message ?: it.javaClass.simpleName}" }
                         }) { Text(if (item.enabled) "关闭" else "启用") }
+                            }
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         TextButton(onClick = {
                             runCatching {
                                 store.setFavorite(gameId, item.id, !item.favorite)
