@@ -10,6 +10,14 @@ static bool record_award(void* context, size_t index, uint32_t amount) {
     log->total += amount;
     return true;
 }
+typedef struct { unsigned calls; } FailureLog;
+static bool fail_second_award(void* context, size_t index, uint32_t amount) {
+    FailureLog* state = (FailureLog*)context;
+    (void)index;
+    (void)amount;
+    state->calls++;
+    return state->calls < 2;
+}
 int main(void) {
     GbaPlusPartyMember party[6] = {
         { true, false, false, 50 },
@@ -46,6 +54,14 @@ int main(void) {
     gbaPlusExpDispatchReset(&battle);
     assert(!gbaPlusDispatchBattleEvent(&battle, 200, 750, party, 6, false, record_award, &once));
     assert(!battle.guard.initialized);
+    GbaPlusExpDispatchState partial = {0};
+    FailureLog failed = {0};
+    assert(!gbaPlusDispatchBattleEvent(&partial, 1234, 100, party, 6, true, fail_second_award, &failed));
+    assert(failed.calls == 2 && partial.failed);
+    assert(!gbaPlusDispatchBattleEvent(&partial, 1235, 100, party, 6, true, fail_second_award, &failed));
+    assert(failed.calls == 2);
+    gbaPlusExpDispatchReset(&partial);
+    assert(!partial.failed);
     AwardLog log = {0};
     assert(gbaPlusDispatchFullExp(1000, party, 6, true, record_award, &log));
     assert(log.count == 2 && log.mask == 3 && log.total == 2000);
