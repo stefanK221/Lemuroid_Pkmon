@@ -65,6 +65,13 @@ def analyze(path: Path) -> dict:
     if not all(value % 2 == 0 and getexp_offset <= value - 0x08000000 < 0x4ACD0
                for value in state_entries):
         raise ValueError("GETEXP jump table invalid")
+    # Phase 2 starts at 0x0804A414 and walks party slots in 100-byte
+    # increments. This is a grounded disassembly anchor for the next step,
+    # not permission to write experience points into party memory.
+    phase2_offset = state_entries[2] - 0x08000000
+    phase2_signature = bytes.fromhex("25 00 27 00 64 20 39 1c 41 43")
+    if rom[phase2_offset:phase2_offset + len(phase2_signature)] != phase2_signature:
+        raise ValueError("GETEXP party enumeration signature changed")
     battle_dispatch_report = {
         "table_file_offset": hex(battle_dispatch),
         "number_of_entries": len(entries),
@@ -73,6 +80,8 @@ def analyze(path: Path) -> dict:
         "getexp_thumb_entry": hex(entries[getexp_opcode]),
         "getexp_state_jump_table_offset": hex(state_table_offset),
         "getexp_state_handlers": [hex(value) for value in state_entries],
+        "phase2_party_record_stride": 100,
+        "phase2_party_enumeration_offset": hex(phase2_offset),
         "getexp_file_offset": hex(entries[getexp_opcode] - 0x08000001),
         "next_opcode_thumb_entry": hex(entries[0x24]),
         "integration_status": "address identified; ARM/Thumb hook and actual battle testing pending"
