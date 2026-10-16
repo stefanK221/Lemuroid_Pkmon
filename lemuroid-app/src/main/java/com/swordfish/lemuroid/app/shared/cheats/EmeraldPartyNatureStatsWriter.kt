@@ -21,8 +21,9 @@ object EmeraldPartyNatureStatsWriter {
         val out = EmeraldPartyNatureDraft.previewPatchedSave(input, position, nature)
         val currentHp = u16(input, start + 86)
         val oldMaximum = u16(input, start + 88)
-        val current = if (currentHp == 0 && oldMaximum > 0) 0
-            else (values.hp - (oldMaximum - currentHp).coerceAtLeast(0)).coerceIn(1, values.hp)
+        require(oldMaximum > 0 && currentHp <= oldMaximum) { "队伍HP数据异常，拒绝修改" }
+        val current = if (currentHp == 0) 0
+            else (values.hp - (oldMaximum - currentHp)).coerceIn(1, values.hp)
         val stats = listOf(current, values.hp, values.attack, values.defense,
             values.speed, values.specialAttack, values.specialDefense)
         stats.forEachIndexed { index, value -> put16(out, start + 86 + index * 2, value) }
