@@ -149,7 +149,7 @@ fun QuickToolsDialog(
                 Text("加入第一个空盒位，不覆盖已有精灵；默认撞击，不自动补图鉴。执行前请在游戏内保存。")
                 val speciesToDex = dexMap.entries.associate { it.value to it.key }
                 val availableDexNumbers = dexMap.entries
-                    .filter { (_, species) -> species in 1..251 || species in 277..411 }
+                    .filter { (_, species) -> species in 1..411 }
                     .map { it.key }.sorted()
                 if (availableDexNumbers.isNotEmpty()) {
                     Text("可查询图鉴编号：${availableDexNumbers.first()}～${availableDexNumbers.last()}（无效物种不可领取）")
@@ -236,7 +236,7 @@ fun QuickToolsDialog(
                     val selectedNature = nature
                     val selectedShiny = shiny
                     val selectedLevel = levelText.toIntOrNull()
-                    require(id in 1..251 || id in 277..411) { "此精灵尚未开放领取" }
+                    require(id in 1..411) { "此精灵尚未开放领取" }
                     require(number != null && dexMap[number] == id) { "编号与物种不匹配" }
                     val selectedIvs = requireNotNull(customIvs).toList()
                     val selectedEvs = requireNotNull(customEvs).toList()
