@@ -59,6 +59,19 @@ static bool gbaPlusExpGuardAccept(GbaPlusExpEventGuard* guard, uint64_t event_id
     guard->initialized = true;
     return true;
 }
+/*
+ * Do not consume an event ID before the native award callbacks succeed.
+ * A failed callback may indicate a partial award: caller must stop rather
+ * than retry blindly. Mark event first in the battle hook's persistent
+ * ledger before any mutations, and do not reissue on callback failure.
+ */
+typedef struct {
+    GbaPlusExpEventGuard guard;
+    bool failed;
+} GbaPlusExpDispatchState;
+static void gbaPlusExpDispatchReset(GbaPlusExpDispatchState* state) {
+    if (state) { gbaPlusExpGuardReset(&state->guard); state->failed = false; }
+}
 typedef bool (*GbaPlusAwardExp)(void* context, size_t party_slot, uint32_t amount);
 static bool gbaPlusDispatchFullExp(uint32_t award,
                                    const GbaPlusPartyMember* members,
