@@ -31,6 +31,17 @@ int main(void) {
     assert(!gbaPlusExpGuardAccept(&guard, 0));
     gbaPlusExpGuardReset(&guard);
     assert(gbaPlusExpGuardAccept(&guard, 42));
+    GbaPlusExpDispatchState battle = {0};
+    AwardLog once = {0};
+    assert(gbaPlusDispatchBattleEvent(&battle, 123, 750, party, 6, true, record_award, &once));
+    assert(once.count == 2 && once.total == 1500);
+    assert(!gbaPlusDispatchBattleEvent(&battle, 123, 750, party, 6, true, record_award, &once));
+    assert(once.count == 2);
+    assert(gbaPlusDispatchBattleEvent(&battle, 124, 750, party, 6, true, record_award, &once));
+    assert(once.count == 4);
+    gbaPlusExpDispatchReset(&battle);
+    assert(!gbaPlusDispatchBattleEvent(&battle, 200, 750, party, 6, false, record_award, &once));
+    assert(!battle.guard.initialized);
     AwardLog log = {0};
     assert(gbaPlusDispatchFullExp(1000, party, 6, true, record_award, &log));
     assert(log.count == 2 && log.mask == 3 && log.total == 2000);
