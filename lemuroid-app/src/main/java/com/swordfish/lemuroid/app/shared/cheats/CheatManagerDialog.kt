@@ -74,7 +74,7 @@ fun CheatManagerDialog(
     }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("金手指管理（测试版）") },
+        title = { Text("金手指管理") },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
