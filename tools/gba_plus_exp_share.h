@@ -33,4 +33,27 @@ static bool gbaPlusAllocateFullExp(uint32_t award,
     }
     return true;
 }
+/*
+ * Dispatch through the game's own experience-award routine, once a verified
+ * battle hook exists. An award callback must be provided by the ROM-specific
+ * integration; never patch party EXP bytes directly.
+ *
+ * The caller owns transactional safety and must invoke this only at the
+ * verified battle EXP event, not every emulator frame.
+ */
+typedef bool (*GbaPlusAwardExp)(void* context, size_t party_slot, uint32_t amount);
+static bool gbaPlusDispatchFullExp(uint32_t award,
+                                   const GbaPlusPartyMember* members,
+                                   size_t count,
+                                   bool enabled,
+                                   GbaPlusAwardExp callback,
+                                   void* context) {
+    if (!callback) return false;
+    uint32_t awards[6] = {0};
+    if (!gbaPlusAllocateFullExp(award, members, count, enabled, awards)) return false;
+    for (size_t i = 0; i < count; i++) {
+        if (awards[i] && !callback(context, i, awards[i])) return false;
+    }
+    return true;
+}
 #endif
