@@ -10,6 +10,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -194,7 +196,8 @@ fun EmeraldSaveEditDialog(fileName: String, onDismiss: () -> Unit, onReadLiveSav
         title = { Text("宝可梦属性编辑器") },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                Text(message)
+                Text(message, color = MaterialTheme.colorScheme.primary)
+                Text("当前队伍：仅修改明确选中的成员，修改前自动备份。", style = MaterialTheme.typography.bodySmall)
                 Button(onClick = {
                     runCatching {
                         val raw = onReadLiveSave()
@@ -214,7 +217,8 @@ fun EmeraldSaveEditDialog(fileName: String, onDismiss: () -> Unit, onReadLiveSav
                         message = "读取当前游戏存档失败：${it.message}"
                     }
                 }) { Text("读取当前游戏存档（无需导入）") }
-                Text("存档管理")
+                HorizontalDivider()
+                Text("存档管理与恢复", style = MaterialTheme.typography.titleMedium)
                 Button(onClick = {
                     runCatching {
                         val raw = onReadLiveSave()
@@ -261,6 +265,8 @@ fun EmeraldSaveEditDialog(fileName: String, onDismiss: () -> Unit, onReadLiveSav
                         "全部清零",
                         "自定义努力值",
                     )
+                    HorizontalDivider()
+                    Text("当前队伍属性", style = MaterialTheme.typography.titleMedium)
                     Text("努力值方案（仅修改选中的成员）")
                     Box {
                         Button(onClick = { evMenuExpanded = true }) {
