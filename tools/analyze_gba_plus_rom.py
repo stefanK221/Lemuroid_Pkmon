@@ -123,6 +123,19 @@ def analyze(path: Path) -> dict:
     }
     if rom[0x4A9B4:0x4A9BE] != bytes.fromhex("fd 23 0b 70 04 20 48 70 8c 4e"):
         raise ValueError("GETEXP controller command signature changed")
+    # Stock award amount is computed in the game's own GETEXP state 2.
+    # Exact Thumb sequence: base exp = defeatedSpeciesExp * defeatedLevel / 7,
+    # then participant-specific division, with a minimum of one EXP point.
+    # Preserve this as a baseline before changing full-share semantics.
+    stock_split = {
+        "base_exp_divide_by_7_bl": "0x0804A4AE",
+        "participant_count_guard": "0x0804A4BA",
+        "participant_award_division_bl": "0x0804A4C0",
+        "party_slot_index_address": "0x020244EC",
+        "warning": "original participant/EXP-item branches remain part of native progression"
+    }
+    if rom[0x4A4A8:0x4A4AE] != bytes.fromhex("50 43 07 21 9d f2"):
+        raise ValueError("GETEXP stock experience formula changed")
     battle_dispatch_report = {
         "table_file_offset": hex(battle_dispatch),
         "number_of_entries": len(entries),
@@ -135,6 +148,7 @@ def analyze(path: Path) -> dict:
         "phase3_exp_modifier_rom_offset": hex(exp_modifier_code),
         "native_exp_delivery_candidates": native_award_sites,
         "getexp_direct_calls": getexp_calls,
+        "stock_experience_division": stock_split,
         "phase2_party_enumeration_offset": hex(phase2_offset),
         "getexp_file_offset": hex(entries[getexp_opcode] - 0x08000001),
         "next_opcode_thumb_entry": hex(entries[0x24]),
