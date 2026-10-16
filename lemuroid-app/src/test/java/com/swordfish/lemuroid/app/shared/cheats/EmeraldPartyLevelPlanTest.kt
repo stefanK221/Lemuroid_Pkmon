@@ -136,6 +136,38 @@ class EmeraldPartyLevelPlanTest {
         }
     }
 
+    @Test fun recalculatedStatsMatchGenThreeFormulasAndPreserveDamage() {
+        val save = fixture()
+        val base = listOf(80, 82, 83, 80, 100, 100)
+        val pokemon = offset(1) + 0x238
+        put16(save, pokemon + 86, 95)
+        checksum(save, 1)
+        val plan = EmeraldPartyLevelPlan.prepare(save, 1, 75) { 3 }
+        val changed = EmeraldPartyLevelStatsWriter.preview(save, plan, base)
+        val expected = EmeraldPartyStats.calculate(base, List(6) { 0 }, List(6) { 0 }, 75, 0)
+        assertEquals(expected.hp, (changed[pokemon + 88].toInt() and 255) or
+            ((changed[pokemon + 89].toInt() and 255) shl 8))
+        val expectedHp = (expected.hp - 25).coerceIn(1, expected.hp)
+        assertEquals(expectedHp, (changed[pokemon + 86].toInt() and 255) or
+            ((changed[pokemon + 87].toInt() and 255) shl 8))
+        assertEquals(75, EmeraldSaveInspector.inspect(changed).partyLevels[0])
+    }
+
+    @Test fun invalidHpPreventsLevelOrNatureWrite() {
+        val save = fixture()
+        val pokemon = offset(1) + 0x238
+        put16(save, pokemon + 86, 130)
+        checksum(save, 1)
+        val base = listOf(80, 82, 83, 80, 100, 100)
+        val plan = EmeraldPartyLevelPlan.prepare(save, 1, 55) { 3 }
+        assertThrows(IllegalArgumentException::class.java) {
+            EmeraldPartyLevelStatsWriter.preview(save, plan, base)
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            EmeraldPartyNatureStatsWriter.preview(save, 1, 7, base)
+        }
+    }
+
     @Test fun rejectsPositionsAndLevelsOutsideParty() {
         val save = fixture()
         for (position in listOf(0, 2, 7)) {
