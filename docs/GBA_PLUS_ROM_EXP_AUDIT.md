@@ -47,6 +47,17 @@ Selected exact decoded call sites:
 
 **All are static observations, not a verified experience-award callback.** The `0x4A32C..0x4ACD0` region also contains literal pools and jump-table data, so a linear disassembler can display misleading instructions at non-code locations. An actual hook must preserve original native battle progression.
 
+## Native EXP controller path located (2026-10-16)
+
+Actual Thumb disassembly of the SHA-256-matched user ROM shows a useful delivery path beyond the original six-member scan:
+
+- Phase 3 (`0x0804A67A..`): held-item experience modifier includes exact `150 / 100` arithmetic at `0x0804A682..0x0804A68A`; do not remove this multiplier when implementing full-party awards.
+- Phase 4 (`0x0804A892..`): the handler reads cached battle stats through attribute IDs `0x3A..0x3F` and records six stat values, evidence that the original game computes level-up effects in the standard battle flow.
+- Phase 5 (`0x0804A9B4..`): it writes command bytes `FD 04 <recipient> <party slot> FF` into the battle controller packet and calls further controller logic; there is a native callback at **`0x0805E990`**. This path must be preserved to avoid disabling stock UI, stat changes or move learning. The precise semantics of that callee have not yet been independently verified.
+- `tools/analyze_gba_plus_rom.py` now fingerprints phase-3 modifier bytes and phase-5 battle controller command to prevent accidentally targeting another ROM variant.
+
+**Still not safe to enable EXP sharing:** there is no implemented proof that every extra party member can be routed through the native controller without replaying rewards or corrupting the game's party loop state. The hooked mGBA core currently has no battle-CPU hook at all. Adding UI flags alone does not implement this feature.
+
 ## Experience-sharing delivery blocker
 
 The script command GETEXP address is located, but there is still no verified *per-recipient native award callback*, battle event identity, or safe patch/ABI. No game runtime experience-sharing hook has been installed. The existing C/Kotlin EXP allocation and dispatch code is **unit-test-only scaffolding** and must not be presented as an enabled gameplay feature.
