@@ -2,6 +2,14 @@
 #include <assert.h>
 #include <stdio.h>
 
+typedef struct { unsigned count; unsigned mask; uint32_t total; } AwardLog;
+static bool record_award(void* context, size_t index, uint32_t amount) {
+    AwardLog* log = (AwardLog*)context;
+    log->count++;
+    log->mask |= 1u << index;
+    log->total += amount;
+    return true;
+}
 int main(void) {
     GbaPlusPartyMember party[6] = {
         { true, false, false, 50 },
@@ -12,6 +20,13 @@ int main(void) {
         { true, false, false, 100 },
     };
     uint32_t awards[6] = { 9, 9, 9, 9, 9, 9 };
+    AwardLog log = {0};
+    assert(gbaPlusDispatchFullExp(1000, party, 6, true, record_award, &log));
+    assert(log.count == 2 && log.mask == 3 && log.total == 2000);
+    log = (AwardLog){0};
+    assert(gbaPlusDispatchFullExp(1000, party, 6, false, record_award, &log));
+    assert(log.count == 0);
+    assert(!gbaPlusDispatchFullExp(1000, party, 6, true, NULL, &log));
     assert(gbaPlusAllocateFullExp(1000, party, 6, true, awards));
     assert(awards[0] == 1000 && awards[1] == 1000);
     for (int i = 2; i < 6; i++) assert(awards[i] == 0);
