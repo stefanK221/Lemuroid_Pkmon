@@ -134,40 +134,34 @@ fun QuickToolsDialog(
                 HorizontalDivider()
                 Text("领取精灵到电脑", style = MaterialTheme.typography.titleMedium)
                 Text("加入第一个空盒位，不覆盖已有精灵；默认撞击，不自动补图鉴。执行前请在游戏内保存。")
-                Text("按ROM图鉴序号检索（不是存档内部物种ID）。如游戏显示的编号不符，请停止并反馈。")
-                OutlinedTextField(value = search, onValueChange = { search = it.take(30) }, label = { Text("搜索名称或ROM图鉴编号") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-                if (search.isNotBlank()) TextButton(onClick = { search = "" }) { Text("清除搜索") }
                 val speciesToDex = dexMap.entries.associate { it.value to it.key }
-                val availableDexNumbers = dexMap.entries.filter { (_, species) -> species in 1..251 || species in 277..411 }.map { it.key }.sorted()
+                val availableDexNumbers = dexMap.entries
+                    .filter { (_, species) -> species in 1..251 || species in 277..411 }
+                    .map { it.key }.sorted()
                 if (availableDexNumbers.isNotEmpty()) {
-                    Text("可领取的ROM图鉴编号范围：${availableDexNumbers.first()}～${availableDexNumbers.last()}（部分编号不支持，请以查询结果为准）")
+                    Text("可查询图鉴编号：${availableDexNumbers.first()}～${availableDexNumbers.last()}（无效物种不可领取）")
                 }
-                val isNumericSearch = search.trim().isNotEmpty() && search.trim().all { it.isDigit() }
-                val number = if (isNumericSearch) search.trim().toIntOrNull() else null
+                OutlinedTextField(
+                    value = search,
+                    onValueChange = { search = it.filter(Char::isDigit).take(3) },
+                    label = { Text("输入ROM图鉴编号") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                )
+                val number = search.toIntOrNull()
                 val resolvedSpecies = number?.let { dexMap[it] }?.takeIf { it in 1..251 || it in 277..411 }
-                val nameAvailable = resolvedSpecies?.let { displayNames[it] } != null
-                if (isNumericSearch && number == null) Text("编号过长，请输入有效的图鉴编号")
-                if (number != null) {
-                    val mappedSpecies = resolvedSpecies
-                    val mappedName = mappedSpecies?.let { displayNames[it] }
-                    Text(if (mappedSpecies == null) "编号 #$number 当前不支持领取" else "编号 #$number 对应：${mappedName ?: "名称暂未收录，请先核对游戏图鉴"}")
+                LaunchedEffect(resolvedSpecies) {
+                    if (resolvedSpecies != null) selected = resolvedSpecies
                 }
-                val candidates = if (isNumericSearch) {
-                    listOfNotNull(number?.let { dex -> dexMap[dex]?.takeIf { it in 1..251 || it in 277..411 }?.let { dex to it } })
+                if (search.isNotBlank()) {
+                    Text(when {
+                        resolvedSpecies == null -> "编号 #${search} 暂不支持领取"
+                        else -> "图鉴 #${number} · ${displayNames[resolvedSpecies] ?: "ROM物种编号 #$resolvedSpecies（名称暂未识别）"}"
+                    }, style = MaterialTheme.typography.titleSmall)
                 } else {
-                    displayNames.entries.filter { (_, name) ->
-                        search.isBlank() || name.contains(search, ignoreCase = true)
-                    }.filter { (id, _) -> id in 1..251 || id in 277..411 }
-                        .take(8).mapNotNull { (id, _) -> speciesToDex[id]?.let { it to id } }
+                    Text("输入编号后显示对应精灵；不再展示示例列表。")
                 }
-                if (candidates.isEmpty()) Text("没有可安全领取的对应精灵，请检查编号或名称；部分精灵尚未开放领取。")
-                candidates.filter { (_, species) -> displayNames.containsKey(species) }.forEach { (dex, species) ->
-                    TextButton(onClick = { selected = species }) {
-                        val label = displayNames[species] ?: "精灵"
-                        Text((if (selected == species) "✓ " else "") + "$label · 图鉴#$dex")
-                    }
-                }
-                Text("已选：${displayNames[selected] ?: "精灵"} · 图鉴#${speciesToDex[selected] ?: "?"}", style = MaterialTheme.typography.titleSmall)
                 TextButton(onClick = { showGiftDetails = !showGiftDetails }) {
                     Text(if (showGiftDetails) "收起高级参数（等级、IV/EV、性格） ▲" else "展开领取参数（等级、IV/EV、性格） ▼")
                 }
@@ -224,16 +218,16 @@ fun QuickToolsDialog(
                     Text(if (shiny) "✓ 闪光精灵（点击改为普通）" else "普通精灵（点击设为闪光）")
                 }
                 HorizontalDivider()
-                Button(enabled = profile != null && dexMap.isNotEmpty() && displayNames[selected] != null && statsValid && (levelText.toIntOrNull() ?: 0) in 1..100 && (!isNumericSearch || (nameAvailable && selected == resolvedSpecies)), onClick = {
-                    val id = selected
+                Button(enabled = profile != null && resolvedSpecies != null && statsValid && (levelText.toIntOrNull() ?: 0) in 1..100, onClick = {
+                    val id = requireNotNull(resolvedSpecies)
                     val selectedNature = nature
                     val selectedShiny = shiny
                     val selectedLevel = levelText.toIntOrNull()
                     require(id in 1..251 || id in 277..411) { "此精灵尚未开放领取" }
-                    require(!isNumericSearch || (nameAvailable && selected == resolvedSpecies)) { "请先确认编号对应的精灵名称并点选" }
+                    require(dexMap[number] == id) { "编号与物种不匹配" }
                     val selectedIvs = requireNotNull(customIvs).toList()
                     val selectedEvs = requireNotNull(customEvs).toList()
-                    confirmation = "将新增${displayNames[id] ?: "精灵"}（图鉴#${speciesToDex[id]}，Lv.${selectedLevel ?: "无效"}，IV:$selectedIvs，EV:$selectedEvs，性格：${selectedNature?.let { natureNames[it] } ?: "随机"}，${if (selectedShiny) "闪光" else "普通"}）到第一个空盒位。会先备份并重启游戏，未保存的进度会丢失。已在游戏内保存后再执行。"
+                    confirmation = "将新增${displayNames[id] ?: "ROM物种#$id"}（图鉴#${speciesToDex[id]}，Lv.${selectedLevel ?: "无效"}，IV:$selectedIvs，EV:$selectedEvs，性格：${selectedNature?.let { natureNames[it] } ?: "随机"}，${if (selectedShiny) "闪光" else "普通"}）到第一个空盒位。会先备份并重启游戏，未保存的进度会丢失。已在游戏内保存后再执行。"
                     action = {
                         val verified = requireNotNull(profile)
                         require((selectedLevel ?: 0) in 1..100) { "请输入1～100的有效等级" }
