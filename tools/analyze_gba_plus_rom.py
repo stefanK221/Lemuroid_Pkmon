@@ -29,6 +29,9 @@ def analyze(path: Path) -> dict:
     stats = ptr(0x1BC)
     names = ptr(0x144)
     moves = ptr(0x1CC)
+    move_table = 0x31C898
+    assert rom[move_table + 12:move_table + 17] == bytes.fromhex('00 28 00 64 23')
+    assert rom[move_table + 33 * 12:move_table + 33 * 12 + 5] == bytes.fromhex('00 23 00 5F 23')
     if not stats["valid"] or not names["valid"]:
         raise ValueError("Verified ROM data pointers missing")
     base = int(stats["offset"], 16)
@@ -40,7 +43,7 @@ def analyze(path: Path) -> dict:
     # alone is NOT a unique signature; it is deliberately not used as a hook.
     return {"sha256": digest, "bytes": len(rom), "header": HEADER.decode(),
             "species_name_table": names, "base_stats_table": stats,
-            "move_table_pointer_at_0x1cc": moves,
+            "move_table_pointer_at_0x1cc": moves, "verified_move_table_file_offset": hex(move_table),
             "sample_species": samples,
             "battle_experience_hook_verified": False,
             "note": "GETEXP opcode 0x23 alone cannot locate a safe ROM-specific award routine."}
