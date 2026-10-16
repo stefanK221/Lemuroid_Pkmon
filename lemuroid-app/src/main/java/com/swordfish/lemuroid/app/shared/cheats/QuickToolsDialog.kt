@@ -224,7 +224,7 @@ fun QuickToolsDialog(
                     val selectedShiny = shiny
                     val selectedLevel = levelText.toIntOrNull()
                     require(id in 1..251 || id in 277..411) { "此精灵尚未开放领取" }
-                    require(dexMap[number] == id) { "编号与物种不匹配" }
+                    require(number != null && dexMap[number] == id) { "编号与物种不匹配" }
                     val selectedIvs = requireNotNull(customIvs).toList()
                     val selectedEvs = requireNotNull(customEvs).toList()
                     confirmation = "将新增${displayNames[id] ?: "ROM物种#$id"}（图鉴#${speciesToDex[id]}，Lv.${selectedLevel ?: "无效"}，IV:$selectedIvs，EV:$selectedEvs，性格：${selectedNature?.let { natureNames[it] } ?: "随机"}，${if (selectedShiny) "闪光" else "普通"}）到第一个空盒位。会先备份并重启游戏，未保存的进度会丢失。已在游戏内保存后再执行。"
