@@ -111,6 +111,18 @@ def analyze(path: Path) -> dict:
     if rom[exp_modifier_code:exp_modifier_code + 16] != bytes.fromhex(
             "28 2c 07 d1 4c 46 21 68 96 20 48 43 64 21 9c f2"):
         raise ValueError("GETEXP modifier signature mismatch")
+    # Native EXP delivery occurs through the existing battle controller:
+    # stage 4 copies stat fields 0x3A..0x3F, stage 5 sends controller
+    # opcode 0x04 to the recipient and later invokes 0x0805E990.
+    # Preserve this mechanism; direct save-RAM EXP writes skip level-ups.
+    native_award_sites = {
+        "stage4_stat_read_start": "0x0804A892",
+        "stage5_controller_exp_command": "0x0804A9B8",
+        "stage5_controller_callback": "0x0805E990",
+        "levelup_controller_pending": True
+    }
+    if rom[0x4A9B4:0x4A9BE] != bytes.fromhex("fd 23 0b 70 04 20 48 70 8c 4e"):
+        raise ValueError("GETEXP controller command signature changed")
     battle_dispatch_report = {
         "table_file_offset": hex(battle_dispatch),
         "number_of_entries": len(entries),
@@ -121,6 +133,7 @@ def analyze(path: Path) -> dict:
         "getexp_state_handlers": [hex(value) for value in state_entries],
         "phase2_party_record_stride": 100,
         "phase3_exp_modifier_rom_offset": hex(exp_modifier_code),
+        "native_exp_delivery_candidates": native_award_sites,
         "getexp_direct_calls": getexp_calls,
         "phase2_party_enumeration_offset": hex(phase2_offset),
         "getexp_file_offset": hex(entries[getexp_opcode] - 0x08000001),
