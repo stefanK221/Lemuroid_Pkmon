@@ -168,6 +168,21 @@ class EmeraldPartyLevelPlanTest {
         }
     }
 
+    @Test fun refusesNatureChangesForPidDependentForms() {
+        for (species in listOf(201, 327)) {
+            val save = fixture()
+            val start = offset(1) + 0x238
+            // Fixture PID is zero, so Growth is the first encrypted block.
+            put32(save, start + 32, species.toLong() xor 0x12345678L)
+            put16(save, start + 28, species)
+            checksum(save, 1)
+            assertEquals(species, EmeraldSaveInspector.inspect(save).partySpecies[0])
+            assertThrows(IllegalArgumentException::class.java) {
+                EmeraldPartyNatureDraft.previewPatchedSave(save, 1, 7)
+            }
+        }
+    }
+
     @Test fun rejectsPositionsAndLevelsOutsideParty() {
         val save = fixture()
         for (position in listOf(0, 2, 7)) {
