@@ -63,6 +63,35 @@ class EmeraldPartyLevelPlanTest {
         assertArrayEquals(original, save)
     }
 
+    @Test fun naturePreviewTouchesOnlySelectedPartyPidEncryptedDataAndSectionChecksum() {
+        val save = fixture()
+        val original = save.copyOf()
+        val modified = EmeraldPartyNatureDraft.previewPatchedSave(save, 1, 7)
+        assertArrayEquals(original, save)
+        val before = EmeraldSaveInspector.inspect(save)
+        val after = EmeraldSaveInspector.inspect(modified)
+        assertEquals(before.partySpecies, after.partySpecies)
+        assertEquals(before.partyIvs, after.partyIvs)
+        assertEquals(before.partyEvs, after.partyEvs)
+        val partyStart = offset(1) + 0x238
+        val newPid = u32(modified, partyStart)
+        assertEquals(7L, newPid % 25)
+        assertEquals(0L, newPid % 24)
+        assertEquals(
+            EmeraldQuickSavePatcher.shinyFor(0x12345678L, 0L),
+            EmeraldQuickSavePatcher.shinyFor(0x12345678L, newPid),
+        )
+        for (i in save.indices) {
+            val isAllowed = i in partyStart until partyStart + 4 ||
+                i in partyStart + 32 until partyStart + 80 ||
+                i in offset(1) + 0xff6 until offset(1) + 0xff8
+            if (!isAllowed) assertEquals("Unexpected change at $i", save[i], modified[i])
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            EmeraldPartyNatureDraft.previewPatchedSave(save, 2, 7)
+        }
+    }
+
     @Test fun rejectsPositionsAndLevelsOutsideParty() {
         val save = fixture()
         for (position in listOf(0, 2, 7)) {
