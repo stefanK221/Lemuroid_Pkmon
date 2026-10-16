@@ -20,6 +20,10 @@ int main(void) {
         { true, false, false, 100 },
     };
     uint32_t awards[6] = { 9, 9, 9, 9, 9, 9 };
+    GbaPlusExpDispatchState state = {0};
+    state.failed = true;
+    gbaPlusExpDispatchReset(&state);
+    assert(!state.failed && !state.guard.initialized);
     GbaPlusExpEventGuard guard = {0};
     assert(gbaPlusExpGuardAccept(&guard, 42));
     assert(!gbaPlusExpGuardAccept(&guard, 42));
