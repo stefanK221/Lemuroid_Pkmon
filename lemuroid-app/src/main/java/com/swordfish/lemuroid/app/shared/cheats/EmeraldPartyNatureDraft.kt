@@ -37,6 +37,45 @@ object EmeraldPartyNatureDraft {
         return null
     }
 
+    /**
+     * Offline prototype only. Re-key the same encrypted 48 bytes when PID changes.
+     * Since PID modulo 24 is unchanged, its substructure layout stays intact.
+     * This DOES NOT recalculate derived in-party stats: never wire to the live
+     * save editor until runtime stat refresh is verified.
+     */
+    fun previewPatchedSave(input: ByteArray, position: Int, nature: Int): ByteArray {
+        val save = EmeraldSaveInspector.inspect(input)
+        require(position in 1..save.partyCount) { "只能编辑当前队伍成员" }
+        val base = (0 until 14).map { save.activeSlot * 57344 + it * 4096 }
+            .first { u16(input, it + 0xff4) == 1 }
+        val start = base + 0x238 + (position - 1) * 100
+        val oldPid = u32(input, start)
+        val trainer = u32(input, start + 4)
+        val newPid = previewPid(input, position, nature)
+        val output = input.copyOf()
+        if (newPid == oldPid) return output
+        val oldKey = oldPid xor trainer
+        val newKey = newPid xor trainer
+        for (word in 0 until 12) {
+            val at = start + 32 + word * 4
+            put32(output, at, u32(input, at) xor oldKey xor newKey)
+        }
+        put32(output, start, newPid)
+        // Section 1 checksum follows the exact verified Emerald-format layout.
+        var sum = 0L
+        for (offset in 0 until 3968 step 4) sum = (sum + u32(output, base + offset)) and 0xffffffffL
+        val checksum = ((sum + (sum ushr 16)) and 65535).toInt()
+        output[base + 0xff6] = checksum.toByte()
+        output[base + 0xff7] = (checksum ushr 8).toByte()
+        val verified = EmeraldSaveInspector.inspect(output)
+        check(verified.partyCount == save.partyCount && verified.sequence == save.sequence)
+        check(verified.partyIvs == save.partyIvs && verified.partyEvs == save.partyEvs)
+        for (i in 0 until save.partyCount) {
+            check(verified.partySpecies[i] == save.partySpecies[i])
+        }
+        return output
+    }
+
     fun previewPid(input: ByteArray, position: Int, nature: Int): Long {
         val inspected = EmeraldSaveInspector.inspect(input)
         require(position in 1..inspected.partyCount) { "队伍位置无效" }
