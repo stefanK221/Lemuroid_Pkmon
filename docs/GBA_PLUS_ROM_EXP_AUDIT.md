@@ -15,9 +15,15 @@ The user supplied `口袋妖怪 漆黑的魅影 5.0EX+BW.gba` for local inspecti
 - **Important mismatch:** 32-bit value at header `0x1CC` is `0x09900000`. This points outside the supplied ROM; it **must not** be trusted as a move-table pointer. `QuickToolsProfile.tacklePp()` currently relies on this pointer, so **Resolved in commit `4b382ce7`:** exact-ROM move table starts at file offset `0x31C898`; 12-byte records verify Pound #1 (`00 28 00 64 23`) and Tackle #33 (`00 23 00 5F 23`). The app now SHA-gates and checks both records, rather than following the invalid header pointer. Phone verification of gift Pokémon remains outstanding.
 - Emerald upstream battle-script opcode `0x23` corresponds to `GETEXP`; byte `0x23` alone is common and does **not** locate this specific ROM hack's actual battle script or execution routine.
 
+## Battle GETEXP entry now located (ROM checked)
+
+The exact user-provided SHA-matched file contains a contiguous **250-entry Thumb battle-command dispatcher** at **ROM offset `0x310500`**. Every table entry resolves to a valid odd Thumb address in the ROM. The table's opcode `0x00` points to `0x08045FFD`; **opcode `0x23` (GETEXP)** points to **Thumb address `0x0804A32D`** (code offset **`0x4A32C`**); the following command `0x24` points to `0x0804ACD1`. These pointers were read and checked against the original uploaded ROM, not inferred from the generic Emerald address map.
+
+This is a concrete discovery of the experience-award **command entry point**, NOT yet a verified code patch. Need Thumb disassembly of the roughly `0x9A4`-byte command region, trace the normal per-party distribution and call sites, and capture in-game behavior before changing command logic. Never replace GETEXP with a guessed per-frame XP write.
+
 ## Experience-sharing delivery blocker
 
-No verified native battle-award callback address, event identity, nor ROM-specific XP gain routine has been located yet. The existing C/Kotlin EXP allocation and dispatch code is **unit-test-only scaffolding** and must not be presented as an enabled gameplay feature.
+The script command GETEXP address is located, but there is still no verified *per-recipient native award callback*, battle event identity, or safe patch/ABI. No game runtime experience-sharing hook has been installed. The existing C/Kotlin EXP allocation and dispatch code is **unit-test-only scaffolding** and must not be presented as an enabled gameplay feature.
 
 Next: disassemble the exact ROM using a Thumb/ARM-aware tool, trace the battle command dispatch table and battle-script `GETEXP` handler, identify its actual addresses and arguments, validate with emulator breakpoints and battle RAM traces, and only then connect the already-tested allocator to the native experience-award path. Preserve stock party EXP, level-up, moves and evolution logic.
 
