@@ -35,6 +35,18 @@ The Thumb-1 BL decoding pass in `tools/analyze_gba_plus_rom.py` now enumerates *
 
 Run `python tools/disassemble_gba_getexp.py "/path/to/口袋妖怪 漆黑的魅影 5.0EX+BW.gba" --output getexp.asm` with Clang and LLVM objdump installed. The new tool SHA-checks the user's ROM, extracts **only** the `0x4A32C..0x4ACD0` handler into a temporary ELF object marked as Thumb, and disassembles machine instructions with LLVM. Temporary copyrighted bytes are removed automatically, and ROM data is never committed. Use its output to trace phase-specific attribute reads, EXP calculation, recipient delivery and evolution/level-up callbacks before patching.
 
+## Actual ROM-address disassembly (2026-10-16)
+
+The uploaded ROM was disassembled locally using Clang + LLVM objdump. **Important tooling correction:** raw extracted ELF objects otherwise show function-relative addresses such as `0x0`, misleading branch tracing. `tools/disassemble_gba_getexp.py` now sets `--adjust-vma=0x804a32c`, so output is in true GBA ROM address space.
+
+Selected exact decoded call sites:
+- `0x0804A5BA → 0x0806A518` and `0x0804A626 → 0x0806A518`: shared Pokémon attribute accessor candidate, not yet proven.
+- `0x0804A688 → 0x082E7540`, `0x0804A6A4 → 0x082E7540`, `0x0804A702 → 0x082E7540`: repeated arithmetic/helper candidate, not yet proven.
+- `0x0804A6B8 → 0x0806E8A8`: distinct callee requiring closer examination.
+- `0x0804A604 → 0x0805EA60`, `0x0804A60A → 0x080A3778`: another call pair in phase 3.
+
+**All are static observations, not a verified experience-award callback.** The `0x4A32C..0x4ACD0` region also contains literal pools and jump-table data, so a linear disassembler can display misleading instructions at non-code locations. An actual hook must preserve original native battle progression.
+
 ## Experience-sharing delivery blocker
 
 The script command GETEXP address is located, but there is still no verified *per-recipient native award callback*, battle event identity, or safe patch/ABI. No game runtime experience-sharing hook has been installed. The existing C/Kotlin EXP allocation and dispatch code is **unit-test-only scaffolding** and must not be presented as an enabled gameplay feature.
