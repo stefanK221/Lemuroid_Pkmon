@@ -91,9 +91,21 @@ object QuickToolsProfile {
             List(6) { rom.readUnsignedByte() }
         }
         fun tacklePp(): Int = RandomAccessFile(file, "r").use { rom ->
-            val table = pointer(rom, 0x1CC)
-            rom.seek(table + 33 * 12 + 4)
-            rom.readUnsignedByte().also { require(it in 1..64) { "招式表不匹配" } }
+            // Verified from SHA-256-matched 5.0EX+BW ROM, not the header at
+            // 0x1CC (which contains an out-of-ROM value 0x09900000).
+            val table = 0x31C898L
+            require(table + 355 * 12 <= rom.length()) { "招式表越界" }
+            rom.seek(table + 1 * 12)
+            val pound = ByteArray(5).also { rom.readFully(it) }
+            require(pound.contentEquals(byteArrayOf(0, 40, 0, 100, 35))) {
+                "ROM招式表校验失败"
+            }
+            rom.seek(table + 33 * 12)
+            val tackle = ByteArray(5).also { rom.readFully(it) }
+            require(tackle.contentEquals(byteArrayOf(0, 35, 0, 95, 35))) {
+                "撞击招式数据不匹配"
+            }
+            tackle[4].toInt() and 255
         }
     }
     fun verify(context: Context, fileName: String): Verified {
