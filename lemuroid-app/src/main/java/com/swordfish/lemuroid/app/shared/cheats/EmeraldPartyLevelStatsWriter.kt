@@ -21,8 +21,9 @@ object EmeraldPartyLevelStatsWriter {
         val output = EmeraldPartyLevelPlan.previewPatchedSave(input, plan)
         val oldHp = u16(input, start + 86)
         val oldMax = u16(input, start + 88)
-        val hp = if (oldHp == 0 && oldMax > 0) 0
-            else (values.hp - (oldMax - oldHp).coerceAtLeast(0)).coerceIn(1, values.hp)
+        require(oldMax > 0 && oldHp <= oldMax) { "队伍HP数据异常，拒绝修改" }
+        val hp = if (oldHp == 0) 0
+            else (values.hp - (oldMax - oldHp)).coerceIn(1, values.hp)
         listOf(hp, values.hp, values.attack, values.defense, values.speed, values.specialAttack, values.specialDefense)
             .forEachIndexed { i, v -> put16(output, start + 86 + 2 * i, v) }
         var sum = 0L
