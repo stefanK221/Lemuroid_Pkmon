@@ -73,7 +73,7 @@ object QuickToolsProfile {
         }
         /** ROM header 0x1BC points to 28-byte Gen III base stats; byte 19 is growth rate. */
         fun growthRate(species: Int): Int = RandomAccessFile(file, "r").use { rom ->
-            require(species in 1..251 || species in 277..411)
+            require(species in 1..411)
             val table = pointer(rom, 0x1BC)
             val location = table + species * 28L + 19
             require(location < rom.length()) { "精灵成长类型表超出ROM范围" }
@@ -83,7 +83,7 @@ object QuickToolsProfile {
             }
         }
         fun baseStats(species: Int): List<Int> = RandomAccessFile(file, "r").use { rom ->
-            require(species in 1..251 || species in 277..411)
+            require(species in 1..411)
             val table = pointer(rom, 0x1BC)
             val start = table + species * 28L
             require(start + 28 <= rom.length())
@@ -130,7 +130,7 @@ object QuickToolsProfile {
         145 to "闪电鸟", 146 to "火焰鸟", 147 to "迷你龙", 148 to "哈克龙", 149 to "快龙",
         150 to "超梦", 151 to "梦幻", 196 to "太阳伊布", 197 to "月亮伊布", 243 to "雷公",
         244 to "炎帝", 245 to "水君", 249 to "洛奇亚", 250 to "凤王", 251 to "时拉比",
-        277 to "木守宫", 280 to "火稚鸡", 283 to "水跃鱼", 356 to "利欧路", 357 to "路卡利欧",
+        253 to "藤叶蛇", 277 to "木守宫", 280 to "火稚鸡", 283 to "水跃鱼", 356 to "利欧路", 357 to "路卡利欧",
         370 to "圆陆鲨", 372 to "烈咬陆鲨", 392 to "拉鲁拉丝", 394 to "沙奈朵",
         400 to "巨金怪", 404 to "盖欧卡", 405 to "固拉多", 406 to "烈空坐",
         407 to "拉帝亚斯", 408 to "拉帝欧斯", 409 to "基拉祈", 410 to "代欧奇希斯",
