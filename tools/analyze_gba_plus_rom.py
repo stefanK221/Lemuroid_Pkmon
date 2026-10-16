@@ -39,12 +39,34 @@ def analyze(path: Path) -> dict:
     for species in (1, 6, 25, 277, 303, 404):
         record = rom[base + species * 28:base + (species + 1) * 28]
         samples[str(species)] = {"base_stats": list(record[:6]), "growth_rate": record[19]}
+    # Identified by the distinctive contiguous 0xFA-entry battle command
+    # dispatcher. The 0x00 and 0x23 entries match their known script roles.
+    # A verified ROM pointer is NOT equivalent to a tested runtime hook.
+    battle_dispatch = 0x310500
+    getexp_opcode = 0x23
+    entries = [struct.unpack_from("<I", rom, battle_dispatch + i * 4)[0]
+               for i in range(250)]
+    if not all(0x08000001 <= value < 0x08000000 + len(rom)
+               and value & 1 for value in entries):
+        raise ValueError("Battle command dispatch table invalid")
+    if entries[0] != 0x08045FFD or entries[getexp_opcode] != 0x0804A32D:
+        raise ValueError("Battle command signatures changed")
+    battle_dispatch_report = {
+        "table_file_offset": hex(battle_dispatch),
+        "number_of_entries": len(entries),
+        "attack_canceler_thumb_entry": hex(entries[0]),
+        "getexp_opcode": hex(getexp_opcode),
+        "getexp_thumb_entry": hex(entries[getexp_opcode]),
+        "getexp_file_offset": hex(entries[getexp_opcode] - 0x08000001),
+        "next_opcode_thumb_entry": hex(entries[0x24]),
+        "integration_status": "address identified; ARM/Thumb hook and actual battle testing pending"
+    }
     # Emerald's battle-script opcode 0x23 is GETEXP upstream. The byte
     # alone is NOT a unique signature; it is deliberately not used as a hook.
     return {"sha256": digest, "bytes": len(rom), "header": HEADER.decode(),
             "species_name_table": names, "base_stats_table": stats,
             "move_table_pointer_at_0x1cc": moves, "verified_move_table_file_offset": hex(move_table),
-            "sample_species": samples,
+            "sample_species": samples, "battle_command_dispatch": battle_dispatch_report,
             "battle_experience_hook_verified": False,
             "note": "GETEXP opcode 0x23 alone cannot locate a safe ROM-specific award routine."}
 
