@@ -56,6 +56,7 @@ fun EmeraldSaveEditDialog(fileName: String, onDismiss: () -> Unit, onReadLiveSav
     var levelEdit by remember { mutableStateOf("50") }
     var natureEdit by remember { mutableIntStateOf(0) }
     var natureMenu by remember { mutableStateOf(false) }
+    var partyActionMessage by remember { mutableStateOf<String?>(null) }
     // Gen III EV order: HP, Attack, Defense, Speed, Sp. Attack, Sp. Defense.
     var liveSource by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf("选择128KB的游戏内存档 .sav；先备份原件。") }
@@ -413,6 +414,8 @@ fun EmeraldSaveEditDialog(fileName: String, onDismiss: () -> Unit, onReadLiveSav
                                 }
                             }
                         }
+                        Text(if (selected.size == 1) "当前选中：第${selected.single()}只" else "请仅勾选一只精灵")
+                        partyActionMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                         Button(enabled = selected.size == 1, onClick = {
                             runCatching {
                                 val original = requireNotNull(saveBytes)
@@ -429,7 +432,7 @@ fun EmeraldSaveEditDialog(fileName: String, onDismiss: () -> Unit, onReadLiveSav
                                 )
                                 patchSummary = "队伍第${position}只等级：${info.partyLevels[position - 1]} → ${plan.targetLevel}"
                                 showSaveConfirm = true
-                            }.onFailure { message = "等级修改失败：${it.message}" }
+                            }.onFailure { partyActionMessage = "等级修改失败：${it.message ?: it.javaClass.simpleName}"; message = partyActionMessage!! }
                         }) { Text("修改选中精灵等级（备份并重启）") }
                         Button(enabled = selected.size == 1, onClick = {
                             runCatching {
@@ -442,7 +445,7 @@ fun EmeraldSaveEditDialog(fileName: String, onDismiss: () -> Unit, onReadLiveSav
                                 )
                                 patchSummary = "队伍第${position}只性格 → ${natures[natureEdit]}"
                                 showSaveConfirm = true
-                            }.onFailure { message = "性格修改失败：${it.message}" }
+                            }.onFailure { partyActionMessage = "性格修改失败：${it.message ?: it.javaClass.simpleName}"; message = partyActionMessage!! }
                         }) { Text("修改选中精灵性格（备份并重启）") }
                     }
                     if (liveSource) {
