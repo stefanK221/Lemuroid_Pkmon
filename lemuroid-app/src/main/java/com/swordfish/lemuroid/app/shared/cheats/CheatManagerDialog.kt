@@ -137,7 +137,7 @@ fun CheatManagerDialog(
                     .forEach { (index, item) ->
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(item.title)
+                            Text(if (item.title.trim() == "穿墙测试") "穿墙功能" else item.title)
                             Text(when {
                                 item.enabled -> "已启用 · ${item.format.name}"
                                 item.id in potentiallyActive -> "已请求关闭 · 可能需重启"
