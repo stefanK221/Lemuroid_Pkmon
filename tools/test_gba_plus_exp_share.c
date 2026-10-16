@@ -20,6 +20,13 @@ int main(void) {
         { true, false, false, 100 },
     };
     uint32_t awards[6] = { 9, 9, 9, 9, 9, 9 };
+    GbaPlusExpEventGuard guard = {0};
+    assert(gbaPlusExpGuardAccept(&guard, 42));
+    assert(!gbaPlusExpGuardAccept(&guard, 42));
+    assert(gbaPlusExpGuardAccept(&guard, 43));
+    assert(!gbaPlusExpGuardAccept(&guard, 0));
+    gbaPlusExpGuardReset(&guard);
+    assert(gbaPlusExpGuardAccept(&guard, 42));
     AwardLog log = {0};
     assert(gbaPlusDispatchFullExp(1000, party, 6, true, record_award, &log));
     assert(log.count == 2 && log.mask == 3 && log.total == 2000);
