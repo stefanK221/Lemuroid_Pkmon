@@ -69,7 +69,7 @@ def analyze(path: Path) -> dict:
     # increments. This is a grounded disassembly anchor for the next step,
     # not permission to write experience points into party memory.
     phase2_offset = state_entries[2] - 0x08000000
-    phase2_signature = bytes.fromhex("25 00 27 00 64 20 39 1c 41 43")
+    phase2_signature = bytes.fromhex("00 25 00 27 64 20 39 1c 41 43")
     if rom[phase2_offset:phase2_offset + len(phase2_signature)] != phase2_signature:
         raise ValueError("GETEXP party enumeration signature changed")
     battle_dispatch_report = {
