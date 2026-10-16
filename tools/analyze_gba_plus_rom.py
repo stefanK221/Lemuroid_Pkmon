@@ -91,7 +91,7 @@ def analyze(path: Path) -> dict:
         raise ValueError("GETEXP direct BL call count changed")
     from collections import Counter
     call_frequencies = Counter(target for _, target in calls)
-    if call_frequencies[0x6A518] != 23 or call_frequencies[0x2E7540] != 6:
+    if call_frequencies[0x6A518] != 32 or call_frequencies[0x2E7540] != 7:
         raise ValueError("GETEXP key callee signature changed")
     getexp_calls = {
         "direct_bl_count": len(calls),
