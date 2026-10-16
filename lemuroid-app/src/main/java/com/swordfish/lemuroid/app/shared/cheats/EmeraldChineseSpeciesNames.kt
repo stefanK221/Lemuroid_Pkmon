@@ -21,20 +21,20 @@ object EmeraldChineseSpeciesNames {
         260 to "双刃丸",
         261 to "大剑鬼",
         262 to "白色酋雷姆",
-        263 to "帝牙卢卡",
-        264 to "帕路奇犽",
-        265 to "雷吉奇卡斯",
+        263 to "雷吉奇卡斯",
+        264 to "帝牙卢卡",
+        265 to "帕路奇犽",
         266 to "骑拉帝纳",
         267 to "克雷色利亚",
         268 to "达克莱伊",
-        269 to "雷希拉姆",
+        269 to "黑色酋雷姆",
         270 to "捷克罗姆",
-        271 to "黑色酋雷姆",
+        271 to "雷希拉姆",
         272 to "洁咪",
         273 to "玛纳霏",
         274 to "阿尔宙斯",
         275 to "凯路迪欧",
-        276 to "盖诺赛克特"
+        276 to "盖诺赛克特",
     )
 
     fun decoded(romName: (Int) -> ByteArray): Map<Int, String> {
