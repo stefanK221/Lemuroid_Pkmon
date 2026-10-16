@@ -167,6 +167,10 @@ fun EmeraldSaveEditDialog(fileName: String, onDismiss: () -> Unit, onReadLiveSav
                     runCatching {
                         val original = requireNotNull(saveBytes)
                         val patched = requireNotNull(pendingPatch)
+                        require(liveSource) { "只能将当前游戏存档的修改写回游戏" }
+                        val current = onReadLiveSave()
+                        require(current.contentEquals(original)) { "游戏存档在预览后发生变化，请重新读取再修改" }
+                        EmeraldSaveInspector.inspect(patched)
                         val dir = java.io.File(context.filesDir, "gba_plus_backups").apply { mkdirs() }
                         val backup = java.io.File.createTempFile("before_6v_", ".sav", dir)
                         backup.writeBytes(original)
