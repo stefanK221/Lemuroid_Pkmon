@@ -12,7 +12,7 @@ The user supplied `口袋妖怪 漆黑的魅影 5.0EX+BW.gba` for local inspecti
 - Species name table pointer header `0x144`: `0x083185C8`; file offset `0x3185C8`.
 - Observed Charizard species 6 base stats `78/84/78/100/109/85`, growth-rate ID `3`.
 - Species 303 base HP is 1; special Shedinja HP handling is needed.
-- **Important mismatch:** 32-bit value at header `0x1CC` is `0x09900000`. This points outside the supplied ROM; it **must not** be trusted as a move-table pointer. `QuickToolsProfile.tacklePp()` currently relies on this pointer, so a safe fix requires locating/verifying the actual move table (or explicitly pinning vetted move data) before claiming all gift flows work.
+- **Important mismatch:** 32-bit value at header `0x1CC` is `0x09900000`. This points outside the supplied ROM; it **must not** be trusted as a move-table pointer. `QuickToolsProfile.tacklePp()` currently relies on this pointer, so **Resolved in commit `4b382ce7`:** exact-ROM move table starts at file offset `0x31C898`; 12-byte records verify Pound #1 (`00 28 00 64 23`) and Tackle #33 (`00 23 00 5F 23`). The app now SHA-gates and checks both records, rather than following the invalid header pointer. Phone verification of gift Pokémon remains outstanding.
 - Emerald upstream battle-script opcode `0x23` corresponds to `GETEXP`; byte `0x23` alone is common and does **not** locate this specific ROM hack's actual battle script or execution routine.
 
 ## Experience-sharing delivery blocker
