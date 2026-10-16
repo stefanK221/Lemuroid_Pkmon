@@ -72,6 +72,35 @@ def analyze(path: Path) -> dict:
     phase2_signature = bytes.fromhex("00 25 00 27 64 20 39 1c 41 43")
     if rom[phase2_offset:phase2_offset + len(phase2_signature)] != phase2_signature:
         raise ValueError("GETEXP party enumeration signature changed")
+    # Thumb-1 BL encodes a signed 23-bit PC-relative displacement.
+    # Discover all direct calls inside the verified GETEXP command body.
+    # This is a candidate call graph, not proof of an XP award callback.
+    calls = []
+    for offset in range(getexp_offset, 0x4ACD0 - 3, 2):
+        first, second = struct.unpack_from("<HH", rom, offset)
+        if first & 0xF800 != 0xF000 or second & 0xF800 != 0xF800:
+            continue
+        delta = ((first & 0x7FF) << 12) | ((second & 0x7FF) << 1)
+        if delta & (1 << 22):
+            delta -= 1 << 23
+        target = offset + 4 + delta
+        if target < 0 or target >= len(rom):
+            raise ValueError("GETEXP Thumb BL target outside ROM")
+        calls.append((offset, target))
+    if len(calls) != 57:
+        raise ValueError("GETEXP direct BL call count changed")
+    from collections import Counter
+    call_frequencies = Counter(target for _, target in calls)
+    if call_frequencies[0x6A518] != 23 or call_frequencies[0x2E7540] != 6:
+        raise ValueError("GETEXP key callee signature changed")
+    getexp_calls = {
+        "direct_bl_count": len(calls),
+        "call_sites": [{"rom_offset": hex(source), "target_rom_offset": hex(target)}
+                       for source, target in calls],
+        "top_callees": [{"rom_offset": hex(target), "count": count}
+                        for target, count in call_frequencies.most_common(8)],
+        "warning": "Callee purpose and calling convention require disassembly and runtime checks"
+    }
     battle_dispatch_report = {
         "table_file_offset": hex(battle_dispatch),
         "number_of_entries": len(entries),
@@ -81,6 +110,7 @@ def analyze(path: Path) -> dict:
         "getexp_state_jump_table_offset": hex(state_table_offset),
         "getexp_state_handlers": [hex(value) for value in state_entries],
         "phase2_party_record_stride": 100,
+        "getexp_direct_calls": getexp_calls,
         "phase2_party_enumeration_offset": hex(phase2_offset),
         "getexp_file_offset": hex(entries[getexp_opcode] - 0x08000001),
         "next_opcode_thumb_entry": hex(entries[0x24]),
