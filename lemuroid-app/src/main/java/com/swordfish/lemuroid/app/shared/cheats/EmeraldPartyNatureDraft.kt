@@ -14,7 +14,7 @@ object EmeraldPartyNatureDraft {
 
     /**
      * A new PID must keep modulo 24 (same encrypted substructure order), modulo 2
-     * (same ability bit), and the original shiny status. Returns null if no
+     * (same ability bit), the original low-byte gender determinant, and shiny status. Returns null if no
      * candidate can be found safely within the bounded search.
      */
     fun matchingPid(oldPid: Long, trainer: Long, nature: Int): Long? {
@@ -25,6 +25,8 @@ object EmeraldPartyNatureDraft {
         // Iterate low halves deterministically. Shiny candidates have just eight
         // possible high halves per low half; ordinary candidates use a dispersed high.
         for (low in 0..65535) {
+            // Keep the original low PID byte: Gen III gender thresholds use it.
+            if ((low and 255) != (oldPid.toInt() and 255)) continue
             val start = if (shiny) 0 else 0
             val end = if (shiny) 7 else 63
             for (variant in start..end) {
