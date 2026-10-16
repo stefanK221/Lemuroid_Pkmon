@@ -223,7 +223,6 @@ fun QuickToolsDialog(
                     Text(if (shiny) "✓ 闪光精灵（点击改为普通）" else "普通精灵（点击设为闪光）")
                 }
                 HorizontalDivider()
-                }
                 Button(enabled = profile != null && dexMap.isNotEmpty() && statsValid && (levelText.toIntOrNull() ?: 0) in 1..100 && (!isNumericSearch || (nameAvailable && selected == resolvedSpecies)), onClick = {
                     val id = selected
                     val selectedNature = nature
@@ -246,6 +245,7 @@ fun QuickToolsDialog(
                         message = "已加入电脑第${gift.box}盒、第${gift.position}格。进入游戏后到电脑领取；原存档已备份。"
                     }
                 }) { Text("备份并加入电脑空位") }
+                }
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("返回游戏") } },
