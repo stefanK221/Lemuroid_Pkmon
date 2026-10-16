@@ -5,13 +5,15 @@
 #include <string.h>
 
 static unsigned gbaPlusQuickFlags;
+/* Bit 2 reserved for battle EXP sharing. It cannot act until a
+ * ROM-specific battle-award hook is verified and connected. */
 static void gbaPlusQuickReset(void) { gbaPlusQuickFlags = 0; }
 
 static bool gbaPlusQuickCommand(const char* code) {
 	static const char prefix[] = "GBA_PLUS_QUICK_V1:";
 	if (strncmp(code, prefix, sizeof(prefix) - 1)) return false;
 	const char* value = code + sizeof(prefix) - 1;
-	if (value[0] >= '0' && value[0] <= '3' && !value[1]) {
+	if (value[0] >= '0' && value[0] <= '7' && !value[1]) {
 		gbaPlusQuickFlags = (unsigned) (value[0] - '0');
 	}
 	return true;
