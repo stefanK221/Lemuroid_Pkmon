@@ -3,6 +3,11 @@ package com.swordfish.lemuroid.app.shared.cheats
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Card
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -48,6 +53,7 @@ fun CheatManagerDialog(
     var filterText by remember(gameId) { mutableStateOf("") }
     var showEnabledOnly by remember(gameId) { mutableStateOf(false) }
     var formatFilter by remember(gameId) { mutableStateOf<CheatFormat?>(null) }
+    var formatMenuOpen by remember { mutableStateOf(false) }
     var potentiallyActive by remember(gameId) { mutableStateOf(setOf<String>()) }
     var lastDisabledIds by remember(gameId) { mutableStateOf(setOf<String>()) }
 
@@ -100,14 +106,16 @@ fun CheatManagerDialog(
                 TextButton(onClick = { showEnabledOnly = !showEnabledOnly }) {
                     Text(if (showEnabledOnly) "✓ 仅看已启用（点击显示全部）" else "仅查看已启用")
                 }
-                Text("按代码类型筛选")
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    TextButton(onClick = { formatFilter = null }) {
-                        Text((if (formatFilter == null) "✓ " else "") + "全部")
+                Box {
+                    TextButton(onClick = { formatMenuOpen = true }) {
+                        Text("类型：${formatFilter?.name ?: "全部"} ▾")
                     }
-                    listOf(CheatFormat.CODE_BREAKER, CheatFormat.GAME_SHARK, CheatFormat.RAW).forEach { option ->
-                        TextButton(onClick = { formatFilter = option }) {
-                            Text((if (formatFilter == option) "✓ " else "") + option.name)
+                    DropdownMenu(expanded = formatMenuOpen, onDismissRequest = { formatMenuOpen = false }) {
+                        (listOf<CheatFormat?>(null) + listOf(CheatFormat.CODE_BREAKER, CheatFormat.GAME_SHARK, CheatFormat.RAW)).forEach { option ->
+                            DropdownMenuItem(text = { Text(option?.name ?: "全部") }, onClick = {
+                                formatFilter = option
+                                formatMenuOpen = false
+                            })
                         }
                     }
                 }
@@ -142,15 +150,16 @@ fun CheatManagerDialog(
                 }
                 filteredEntries.sortedWith(compareByDescending<IndexedValue<CheatEntry>> { it.value.favorite }.thenBy { it.index })
                     .forEach { (index, item) ->
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(if (item.title.trim() == "穿墙测试") "穿墙功能" else item.title)
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(if (item.title.trim() == "穿墙测试") "穿墙功能" else item.title,
+                                style = MaterialTheme.typography.titleMedium)
                             Text(when {
                                 item.enabled -> "已启用 · ${item.format.name}"
                                 item.id in potentiallyActive -> "已请求关闭 · 可能需重启"
-                                else -> item.format.name
-                            })
-                        }
+                                else -> "未启用 · ${item.format.name}"
+                            }, style = MaterialTheme.typography.bodySmall)
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                         Button(onClick = {
                             runCatching {
                                 onApplyCheat(index, !item.enabled, item.code)
@@ -192,6 +201,8 @@ fun CheatManagerDialog(
                                 error = null
                             }.onFailure { error = "删除失败：${it.message}" }
                         }) { Text("删除") }
+                            }
+                        }
                     }
                 }
                 Button(onClick = {
