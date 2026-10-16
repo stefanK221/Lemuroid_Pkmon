@@ -136,6 +136,25 @@ def analyze(path: Path) -> dict:
     }
     if rom[0x4A4AA:0x4A4B0] != bytes.fromhex("50 43 07 21 9d f2"):
         raise ValueError("GETEXP stock experience formula changed")
+    # Verified split path for this exact ROM (GETEXP phase 2):
+    # r5 counts party slots whose participation bit is set. r6 counts the
+    # specific held-item recipients. The original game stores two awards
+    # into EWRAM and later selects one based on actual participant status.
+    # Merely changing the participation bitmask would change the divisor,
+    # not provide six independent full awards.
+    participant_split_signature = {
+        "participant_counter": "r5",
+        "held_item_counter": "r6",
+        "party_iteration": "r7 from 0 through 5",
+        "base_exp_calculation": "0x0804A592..0x0804A5B2",
+        "participant_award_storage": "0x0804A5B8",
+        "held_item_award_storage": "0x0804A5CC",
+        "requires_native_controller_per_member": True
+    }
+    if rom[0x4A440:0x4A44C] != bytes.fromhex(
+            "00 28 00 d0 01 35 20 1c 0c 21 20 f8"):
+        # The exact register/branch signatures must be audited; fail closed.
+        raise ValueError("GETEXP participant gate no longer matches")
     battle_dispatch_report = {
         "table_file_offset": hex(battle_dispatch),
         "number_of_entries": len(entries),
@@ -149,6 +168,7 @@ def analyze(path: Path) -> dict:
         "native_exp_delivery_candidates": native_award_sites,
         "getexp_direct_calls": getexp_calls,
         "stock_experience_division": stock_split,
+        "participant_split_analysis": participant_split_signature,
         "phase2_party_enumeration_offset": hex(phase2_offset),
         "getexp_file_offset": hex(entries[getexp_opcode] - 0x08000001),
         "next_opcode_thumb_entry": hex(entries[0x24]),
