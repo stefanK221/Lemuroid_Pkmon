@@ -142,17 +142,18 @@ fun QuickToolsDialog(
                 if (availableDexNumbers.isNotEmpty()) {
                     Text("可领取的ROM图鉴编号范围：${availableDexNumbers.first()}～${availableDexNumbers.last()}（部分编号不支持，请以查询结果为准）")
                 }
-                val number = search.trim().toIntOrNull()
                 val isNumericSearch = search.trim().isNotEmpty() && search.trim().all { it.isDigit() }
+                val number = if (isNumericSearch) search.trim().toIntOrNull() else null
                 val resolvedSpecies = number?.let { dexMap[it] }?.takeIf { it in 1..251 || it in 277..411 }
                 val nameAvailable = resolvedSpecies?.let { displayNames[it] } != null
+                if (isNumericSearch && number == null) Text("编号过长，请输入有效的图鉴编号")
                 if (number != null) {
                     val mappedSpecies = resolvedSpecies
                     val mappedName = mappedSpecies?.let { displayNames[it] }
                     Text(if (mappedSpecies == null) "编号 #$number 当前不支持领取" else "编号 #$number 对应：${mappedName ?: "名称暂未收录，请先核对游戏图鉴"}")
                 }
-                val candidates = if (number != null) {
-                    listOfNotNull(dexMap[number]?.takeIf { it in 1..251 || it in 277..411 }?.let { number to it })
+                val candidates = if (isNumericSearch) {
+                    listOfNotNull(number?.let { dex -> dexMap[dex]?.takeIf { it in 1..251 || it in 277..411 }?.let { dex to it } })
                 } else {
                     displayNames.entries.filter { (_, name) ->
                         search.isBlank() || name.contains(search, ignoreCase = true)
@@ -223,7 +224,7 @@ fun QuickToolsDialog(
                     Text(if (shiny) "✓ 闪光精灵（点击改为普通）" else "普通精灵（点击设为闪光）")
                 }
                 HorizontalDivider()
-                Button(enabled = profile != null && dexMap.isNotEmpty() && statsValid && (levelText.toIntOrNull() ?: 0) in 1..100 && (!isNumericSearch || (nameAvailable && selected == resolvedSpecies)), onClick = {
+                Button(enabled = profile != null && dexMap.isNotEmpty() && displayNames[selected] != null && statsValid && (levelText.toIntOrNull() ?: 0) in 1..100 && (!isNumericSearch || (nameAvailable && selected == resolvedSpecies)), onClick = {
                     val id = selected
                     val selectedNature = nature
                     val selectedShiny = shiny
