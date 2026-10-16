@@ -93,6 +93,18 @@ static bool gbaPlusDispatchFullExp(uint32_t award,
  * Failed or partially completed callbacks lock the session until reset;
  * replaying a partial award could duplicate experience.
  */
+/*
+ * In-game integration must supply an event ID that changes with each real KO.
+ * No ROM address is assumed here; unverified event sources are rejected.
+ */
+typedef struct {
+    uint32_t battle_id;
+    uint32_t knockout_id;
+} GbaPlusBattleExpIdentity;
+static uint64_t gbaPlusBattleExpEventId(GbaPlusBattleExpIdentity identity) {
+    if (!identity.battle_id || !identity.knockout_id) return 0;
+    return ((uint64_t)identity.battle_id << 32) | identity.knockout_id;
+}
 static bool gbaPlusDispatchBattleEvent(GbaPlusExpDispatchState* state,
                                        uint64_t event_id,
                                        uint32_t award,
