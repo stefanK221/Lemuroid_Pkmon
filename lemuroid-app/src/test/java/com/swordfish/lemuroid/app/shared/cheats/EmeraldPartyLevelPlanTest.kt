@@ -92,6 +92,24 @@ class EmeraldPartyLevelPlanTest {
         }
     }
 
+    @Test fun offlineLevelPreviewTouchesOnlyChosenPartyRecordAndChecksum() {
+        val save = fixture()
+        val before = save.copyOf()
+        val plan = EmeraldPartyLevelPlan.prepare(save, 1, 75) { 3 }
+        val changed = EmeraldPartyLevelPlan.previewPatchedSave(save, plan)
+        assertArrayEquals(before, save)
+        assertEquals(75, EmeraldSaveInspector.inspect(changed).partyLevels[0])
+        val start = offset(1) + 0x238
+        for (i in save.indices) {
+            val allowed = i in start + 32 until start + 80 ||
+                i in start + 28 until start + 30 ||
+                i == start + 84 ||
+                i in offset(1) + 0xff6 until offset(1) + 0xff8
+            if (!allowed) assertEquals("Unexpected change at $i", save[i], changed[i])
+        }
+        assertEquals(6, EmeraldSaveInspector.inspect(changed).partySpecies[0])
+    }
+
     @Test fun rejectsPositionsAndLevelsOutsideParty() {
         val save = fixture()
         for (position in listOf(0, 2, 7)) {
