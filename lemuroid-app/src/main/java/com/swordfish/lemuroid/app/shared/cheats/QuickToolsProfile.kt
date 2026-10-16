@@ -41,6 +41,30 @@ object QuickToolsProfile {
             ) { "ROM图鉴映射校验失败；已停止领取" }
             result
         }
+        /**
+         * Decode only provable Gen III English glyphs. Unrecognized ROM-hack
+         * encodings return null rather than inventing a Pokémon name.
+         */
+        fun readableSpeciesName(id: Int): String? {
+            val bytes = speciesName(id)
+            val name = StringBuilder()
+            for (raw in bytes) {
+                val value = raw.toInt() and 255
+                if (value == 255) break
+                val character = when (value) {
+                    in 0xBB..0xD4 -> ('A'.code + value - 0xBB).toChar()
+                    in 0xD5..0xEE -> ('a'.code + value - 0xD5).toChar()
+                    in 0xA1..0xAA -> ('0'.code + value - 0xA1).toChar()
+                    0 -> ' '
+                    0xAB -> '!'
+                    0xAD -> '.'
+                    0xB8 -> ','
+                    else -> return null
+                }
+                name.append(character)
+            }
+            return name.toString().trim().takeIf { it.length in 2..10 && it.any(Char::isLetter) }
+        }
         fun speciesName(id: Int): ByteArray = RandomAccessFile(file, "r").use { rom ->
             val table = pointer(rom, 0x144)
             require(table + id * 11 + 11 <= rom.length())
