@@ -41,7 +41,7 @@ class EmeraldPartyLevelPlanTest {
         val plain = ByteArray(48)
         put16(plain, 0, 6) // PID 0: growth is first block
         put32(b, party + 32, u32(plain, 0) xor trainer)
-        repeat(1, 12) { i -> put32(b, party + 32 + i * 4, trainer) }
+        for (i in 1 until 12) put32(b, party + 32 + i * 4, trainer)
         put16(b, party + 28, 6)
         b[party + 84] = 50
         repeat(14) { checksum(b, it) }
