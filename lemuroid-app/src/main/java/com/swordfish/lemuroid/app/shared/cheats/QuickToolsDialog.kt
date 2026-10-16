@@ -58,9 +58,8 @@ fun QuickToolsDialog(
             val loaded = withContext(Dispatchers.IO) {
                 runCatching {
                     val mapping = verified.dexToSpecies()
-                    val names = mapping.values.distinct()
-                        .filter { it in 1..251 || it in 277..411 }
-                        .mapNotNull { species ->
+                    val names = EmeraldChineseSpeciesNames.decoded(verified::speciesName) +
+                        mapping.values.distinct().mapNotNull { species ->
                             verified.readableSpeciesName(species)?.let { species to it }
                         }.toMap()
                     mapping to names
