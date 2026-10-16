@@ -30,7 +30,7 @@ class EmeraldPartyStatsTest {
     }
 
     @Test fun shedinjaAndInvalidInputs() {
-        assertEquals(1, EmeraldPartyStats.calculate(listOf(1, 90, 45, 40, 30, 30), List(6) { 31 }, List(6) { 0 }, 100, 0).hp)
+        assertEquals(1, EmeraldPartyStats.calculate(listOf(1, 90, 45, 40, 30, 30), List(6) { 31 }, List(6) { 0 }, 100, 0, isShedinja = true).hp)
         assertThrows(IllegalArgumentException::class.java) {
             EmeraldPartyStats.calculate(List(6) { 100 }, List(6) { 31 }, List(6) { 255 }, 100, 0)
         }
