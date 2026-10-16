@@ -62,7 +62,7 @@ def analyze(path: Path) -> dict:
     if rom[getexp_offset+0x30:getexp_offset+0x46] != bytes.fromhex(
             "09 48 00 7f 06 28 01 d9 00 f0 a5 fc 80 00 07 49 40 18 00 68 87 46"):
         raise ValueError("GETEXP switch signature mismatch")
-    if not all(value & 1 and getexp_offset <= value - 0x08000001 < 0x4ACD0
+    if not all(value % 2 == 0 and getexp_offset <= value - 0x08000000 < 0x4ACD0
                for value in state_entries):
         raise ValueError("GETEXP jump table invalid")
     battle_dispatch_report = {
