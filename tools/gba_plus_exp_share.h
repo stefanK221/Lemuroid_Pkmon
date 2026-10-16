@@ -87,4 +87,32 @@ static bool gbaPlusDispatchFullExp(uint32_t award,
     }
     return true;
 }
+
+/*
+ * Exactly-once dispatch for a verified battle-event ID.
+ * Failed or partially completed callbacks lock the session until reset;
+ * replaying a partial award could duplicate experience.
+ */
+static bool gbaPlusDispatchBattleEvent(GbaPlusExpDispatchState* state,
+                                       uint64_t event_id,
+                                       uint32_t award,
+                                       const GbaPlusPartyMember* members,
+                                       size_t count,
+                                       bool enabled,
+                                       GbaPlusAwardExp callback,
+                                       void* context) {
+    if (!state || state->failed || !enabled || !callback || !event_id) return false;
+    if (state->guard.initialized && state->guard.last_event == event_id) return false;
+    uint32_t proposed[6] = {0};
+    if (!gbaPlusAllocateFullExp(award, members, count, true, proposed)) return false;
+    /* Commit event ID BEFORE dispatch; never replay on partial callback failure. */
+    if (!gbaPlusExpGuardAccept(&state->guard, event_id)) return false;
+    for (size_t index = 0; index < count; index++) {
+        if (proposed[index] && !callback(context, index, proposed[index])) {
+            state->failed = true;
+            return false;
+        }
+    }
+    return true;
+}
 #endif
