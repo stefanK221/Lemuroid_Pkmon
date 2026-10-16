@@ -8,14 +8,14 @@ package com.swordfish.lemuroid.app.shared.cheats
 object EmeraldPartyStats {
     data class Stats(val hp: Int, val attack: Int, val defense: Int, val speed: Int, val specialAttack: Int, val specialDefense: Int)
     /** The canonical Gen III nature order is Hardy..Quirky, in five groups. */
-    fun calculate(base: List<Int>, ivs: List<Int>, evs: List<Int>, level: Int, nature: Int): Stats {
+    fun calculate(base: List<Int>, ivs: List<Int>, evs: List<Int>, level: Int, nature: Int, isShedinja: Boolean = false): Stats {
         require(base.size == 6 && base.all { it in 1..255 }) { "基础能力表无效" }
         require(ivs.size == 6 && ivs.all { it in 0..31 }) { "IV无效" }
         require(evs.size == 6 && evs.all { it in 0..255 } && evs.sum() <= 510) { "EV无效" }
         require(level in 1..100 && nature in 0..24)
         // Layout: HP, Attack, Defense, Speed, Sp. Attack, Sp. Defense.
         fun raw(index: Int) = ((2 * base[index] + ivs[index] + evs[index] / 4) * level) / 100
-        val hp = if (base[0] == 1) 1 else raw(0) + level + 10 // Shedinja exception
+        val hp = if (isShedinja) 1 else raw(0) + level + 10 // Explicit species check, not base-HP heuristic
         val raised = nature / 5 + 1 // Atk, Def, Speed, SpAtk, SpDef
         val lowered = nature % 5 + 1
         fun stat(index: Int): Int {
