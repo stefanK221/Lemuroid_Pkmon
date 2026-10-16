@@ -58,6 +58,14 @@ object QuickToolsProfile {
                 require(it in 0..5) { "ROM经验成长类型无法识别，已停止操作" }
             }
         }
+        fun baseStats(species: Int): List<Int> = RandomAccessFile(file, "r").use { rom ->
+            require(species in 1..251 || species in 277..411)
+            val table = pointer(rom, 0x1BC)
+            val start = table + species * 28L
+            require(start + 28 <= rom.length())
+            rom.seek(start)
+            List(6) { rom.readUnsignedByte() }
+        }
         fun tacklePp(): Int = RandomAccessFile(file, "r").use { rom ->
             val table = pointer(rom, 0x1CC)
             rom.seek(table + 33 * 12 + 4)
