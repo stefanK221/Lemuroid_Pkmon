@@ -8,6 +8,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.OutlinedTextField
@@ -108,22 +110,26 @@ fun QuickToolsDialog(
     }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("常用功能") },
+        title = { Text("GBA Plus · 快捷工具") },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(message)
-                Text("持续功能仅本次游戏会话有效。重开游戏需重新开启；修改会保留已获得的金钱与物品。")
+                Text(message, color = MaterialTheme.colorScheme.primary)
+                HorizontalDivider()
+                Text("游戏资源", style = MaterialTheme.typography.titleMedium)
+                Text("金钱与大师球仅在本次游戏会话内持续补充；重新启动后需再次开启。")
                 Button(enabled = profile != null, onClick = { requestToggle(1, "无限金钱") }) {
                     Text(if (flags and 1 != 0) "关闭无限金钱（已开启）" else "开启无限金钱（保持999999）")
                 }
                 Button(enabled = profile != null, onClick = { requestToggle(2, "无限大师球") }) {
                     Text(if (flags and 2 != 0) "关闭无限大师球（已开启）" else "开启无限大师球（保持99个）")
                 }
-                if (flags != 0) TextButton(onClick = {
+                if (flags and 3 != 0) TextButton(onClick = {
                     runCatching { onSetFlags(0); flags = 0; message = "已停止金钱与大师球的持续补充。" }
                         .onFailure { message = "关闭失败：${it.message}" }
-                }) { Text("关闭两个持续功能") }
-                Text("获取指定精灵：加入电脑空盒位，不替换已有精灵；默认撞击，不自动补图鉴记录。先在游戏内保存。")
+                }) { Text("一键关闭资源补充") }
+                HorizontalDivider()
+                Text("领取精灵到电脑", style = MaterialTheme.typography.titleMedium)
+                Text("加入第一个空盒位，不覆盖已有精灵；默认撞击，不自动补图鉴。执行前请在游戏内保存。")
                 Text("按ROM图鉴序号检索（不是存档内部物种ID）。如游戏显示的编号不符，请停止并反馈。")
                 OutlinedTextField(value = search, onValueChange = { search = it }, label = { Text("搜索名称或ROM图鉴编号") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                 val speciesToDex = dexMap.entries.associate { it.value to it.key }
@@ -176,7 +182,9 @@ fun QuickToolsDialog(
                 OutlinedTextField(value = ivText, onValueChange = { ivText = it.take(64) }, label = { Text("领取时IV（6项0～31）") }, modifier = Modifier.fillMaxWidth(), singleLine = true, isError = customIvs == null)
                 OutlinedTextField(value = evText, onValueChange = { evText = it.take(64) }, label = { Text("领取时EV（各0～255，总和≤510）") }, modifier = Modifier.fillMaxWidth(), singleLine = true, isError = customEvs == null || customEvs.sum() > 510)
                 if (!statsValid) Text("请检查IV/EV：均需6项，且EV总和不超过510")
-                Text("赠送精灵的性格与闪光（不修改已有队伍）")
+                HorizontalDivider()
+                Text("性格与外观", style = MaterialTheme.typography.titleMedium)
+                Text("仅调整本次领取的精灵，不修改队伍中的现有精灵。")
                 val natureNames = listOf(
                     "勤奋", "怕寂寞", "勇敢", "固执", "顽皮",
                     "大胆", "坦率", "悠闲", "淘气", "乐天",
@@ -204,6 +212,7 @@ fun QuickToolsDialog(
                 TextButton(onClick = { shiny = !shiny }) {
                     Text(if (shiny) "✓ 闪光精灵（点击改为普通）" else "普通精灵（点击设为闪光）")
                 }
+                HorizontalDivider()
                 Button(enabled = profile != null && dexMap.isNotEmpty() && statsValid && (levelText.toIntOrNull() ?: 0) in 1..100 && (!isNumericSearch || (nameAvailable && selected == resolvedSpecies)), onClick = {
                     val id = selected
                     val selectedNature = nature
