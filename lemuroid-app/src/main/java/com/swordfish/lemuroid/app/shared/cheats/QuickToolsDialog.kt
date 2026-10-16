@@ -67,7 +67,21 @@ fun QuickToolsDialog(
             }
             loaded.onSuccess { (mapping, names) ->
                 dexMap = mapping
-                romNames = names
+                // BW edition dex entries cross-checked against published EX+BW index.
+                // Keep these keyed by ROM dex number, not by internal species ID.
+                val bwDexNames = mapOf(
+                    387 to "比克提尼", 388 to "藤叶蛇", 389 to "青藤蛇", 390 to "君主蛇",
+                    391 to "暖暖猪", 392 to "炒炒猪", 393 to "炎武王",
+                    394 to "水水獭", 395 to "双刃丸", 396 to "大剑鬼",
+                    397 to "白色酋雷姆", 398 to "帝牙卢卡", 399 to "帕路奇犽",
+                    400 to "雷吉奇卡斯", 401 to "骑拉帝纳", 402 to "克雷色利亚",
+                    403 to "达克莱伊", 404 to "雷希拉姆", 405 to "捷克罗姆",
+                    406 to "黑色酋雷姆", 407 to "洁咪", 408 to "玛纳霏",
+                    409 to "阿尔宙斯", 410 to "凯路迪欧", 411 to "盖诺赛克特",
+                )
+                romNames = names + bwDexNames.mapNotNull { (dex, name) ->
+                    mapping[dex]?.let { species -> species to name }
+                }.toMap()
                 profile = verified
                 message = "ROM图鉴映射已验证；已解析名称${(names + QuickToolsProfile.namedSpecies).size}种。请核对游戏图鉴。"
             }.onFailure { profile = null; message = it.message ?: "ROM图鉴映射失败" }
