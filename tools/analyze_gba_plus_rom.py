@@ -101,6 +101,16 @@ def analyze(path: Path) -> dict:
                         for target, count in call_frequencies.most_common(8)],
         "warning": "Callee purpose and calling convention require disassembly and runtime checks"
     }
+    # Phase 3 manages the pending EXP value after battle modifiers.
+    # Validate the exact instruction sequence before considering a patch:
+    # 0x0804A67A: cmp held-item id against 0x28
+    # 0x0804A682: multiply EXP by 150
+    # 0x0804A686: divide by 100
+    # These checks do not yet locate the final SetMonData call.
+    exp_modifier_code = 0x4A67A
+    if rom[exp_modifier_code:exp_modifier_code + 16] != bytes.fromhex(
+            "28 2c 07 d1 4c 46 21 68 96 20 48 43 64 21 9c f2"):
+        raise ValueError("GETEXP modifier signature mismatch")
     battle_dispatch_report = {
         "table_file_offset": hex(battle_dispatch),
         "number_of_entries": len(entries),
@@ -110,6 +120,7 @@ def analyze(path: Path) -> dict:
         "getexp_state_jump_table_offset": hex(state_table_offset),
         "getexp_state_handlers": [hex(value) for value in state_entries],
         "phase2_party_record_stride": 100,
+        "phase3_exp_modifier_rom_offset": hex(exp_modifier_code),
         "getexp_direct_calls": getexp_calls,
         "phase2_party_enumeration_offset": hex(phase2_offset),
         "getexp_file_offset": hex(entries[getexp_opcode] - 0x08000001),
