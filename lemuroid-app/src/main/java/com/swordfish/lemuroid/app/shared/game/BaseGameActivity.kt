@@ -181,6 +181,7 @@ abstract class BaseGameActivity : ImmersiveActivity() {
                     }
                     if (showSaveEditor) {
                         EmeraldSaveEditDialog(
+                            fileName = game.fileName,
                             onDismiss = { showSaveEditor = false },
                             onReadLiveSave = {
                                 val view = requireNotNull(baseGameScreenViewModel.retroGameView.retroGameView)
