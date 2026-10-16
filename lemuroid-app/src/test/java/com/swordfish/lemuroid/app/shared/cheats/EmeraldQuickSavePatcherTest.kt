@@ -156,7 +156,7 @@ class EmeraldQuickSavePatcherTest {
     }
     @Test fun invalidInputAndFullBoxesFailBeforeReturningModifiedData() {
         val input = fixture()
-        assertThrows(IllegalArgumentException::class.java) { EmeraldQuickSavePatcher.addToFirstEmptyBox(input,252,name,35,1) }
+        assertThrows(IllegalArgumentException::class.java) { EmeraldQuickSavePatcher.addToFirstEmptyBox(input,412,name,35,1) }
         val corrupt = input.copyOf(); corrupt[offset(0)] = 1
         assertThrows(IllegalArgumentException::class.java) { EmeraldQuickSavePatcher.addToFirstEmptyBox(corrupt,25,name,35,1) }
         for (id in 5..13) { input.fill(1,offset(id),offset(id)+lengths[id]); checksum(input,id) }
