@@ -111,7 +111,16 @@ fun QuickToolsDialog(
                 Text("按ROM图鉴序号检索（不是存档内部物种ID）。如游戏显示的编号不符，请停止并反馈。")
                 OutlinedTextField(value = search, onValueChange = { search = it }, label = { Text("搜索名称或ROM图鉴编号") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                 val speciesToDex = dexMap.entries.associate { it.value to it.key }
+                val availableDexNumbers = dexMap.entries.filter { (_, species) -> species in 1..251 || species in 277..411 }.map { it.key }.sorted()
+                if (availableDexNumbers.isNotEmpty()) {
+                    Text("可领取的ROM图鉴编号范围：${availableDexNumbers.first()}～${availableDexNumbers.last()}（部分编号不支持，请以查询结果为准）")
+                }
                 val number = search.trim().toIntOrNull()
+                if (number != null) {
+                    val mappedSpecies = dexMap[number]?.takeIf { it in 1..251 || it in 277..411 }
+                    val mappedName = mappedSpecies?.let { QuickToolsProfile.namedSpecies[it] ?: profile?.speciesName(it) }
+                    Text(if (mappedSpecies == null) "编号 #$number 当前不支持领取" else "编号 #$number 对应：${mappedName ?: "未知名称，请勿领取"}")
+                }
                 val candidates = if (number != null) {
                     listOfNotNull(dexMap[number]?.takeIf { it in 1..251 || it in 277..411 }?.let { number to it })
                 } else {
