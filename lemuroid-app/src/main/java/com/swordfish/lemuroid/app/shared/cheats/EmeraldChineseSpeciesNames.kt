@@ -39,6 +39,8 @@ object EmeraldChineseSpeciesNames {
 
     /** Verified-ROM fallback; never use for an unverified ROM. */
     fun knownName(species: Int): String? = when (species) {
+        231 -> "钻地鼹鼠" // confirmed by the player's game screenshot
+        232 -> null // Donphan is invalid for this BW hack; exact replacement name not verified
         in 1..251 -> knownFirst251[species - 1]
         in 252..276 -> glyphNames.firstOrNull { it.first == species }?.second
         in 277..411 -> knownHoenn[species - 277]
@@ -48,7 +50,9 @@ object EmeraldChineseSpeciesNames {
     fun decoded(romName: (Int) -> ByteArray): Map<Int, String> {
         val codeToCharacter = mutableMapOf<Int, Char>()
         val conflicts = mutableSetOf<Int>()
-        val seeds = (1..251).map { it to knownFirst251[it - 1] } +
+        // 231/232 are ROM-hack replacements; generic Johto names cannot train the glyph table.
+        val seeds = (1..251).filterNot { it == 231 || it == 232 }
+            .map { it to knownFirst251[it - 1] } +
             (277..411).map { it to knownHoenn[it - 277] } + glyphNames
         for ((species, readableName) in seeds) {
             val bytes = romName(species)
@@ -81,6 +85,9 @@ object EmeraldChineseSpeciesNames {
                 if (!containsKey(species)) continue
                 if (get(species) != name) remove(species)
             }
+            // Direct game screenshot evidence confirms the first replacement species.
+            put(231, "钻地鼹鼠")
+            // For 232 retain only a full ROM glyph decode, never guess "顿甲".
         }
     }
 }
