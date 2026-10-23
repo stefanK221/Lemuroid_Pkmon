@@ -416,6 +416,52 @@ fun EmeraldSaveEditDialog(fileName: String, onDismiss: () -> Unit, onReadLiveSav
                         }) { Text("生成神奇糖果 ×99（备份并重启）") }
                     }
                     if (liveSource) {
+                        Text("队内精灵：闪光与特性（每次仅修改选中的一只）")
+                        Row {
+                            Button(enabled = selected.size == 1, onClick = {
+                                runCatching {
+                                    val position = selected.single()
+                                    val verifiedRom = QuickToolsProfile.verify(context, fileName)
+                                    val traits = verifiedRom.speciesTraits(info.partySpecies[position - 1])
+                                    pendingPatch = EmeraldPartyAppearancePatcher.preview(
+                                        requireNotNull(saveBytes), position, shiny = true,
+                                        genderRatio = traits.first, ability1 = traits.second, ability2 = traits.third,
+                                    )
+                                    patchSummary = "${memberName(info, position)}：设置为闪光（保持性格、性别、IV/EV）"
+                                    showSaveConfirm = true
+                                }.onFailure { partyActionMessage = "修改闪光失败：${it.message}" }
+                            }) { Text("设为闪光") }
+                            Button(enabled = selected.size == 1, onClick = {
+                                runCatching {
+                                    val position = selected.single()
+                                    val verifiedRom = QuickToolsProfile.verify(context, fileName)
+                                    val traits = verifiedRom.speciesTraits(info.partySpecies[position - 1])
+                                    pendingPatch = EmeraldPartyAppearancePatcher.preview(
+                                        requireNotNull(saveBytes), position, shiny = false,
+                                        genderRatio = traits.first, ability1 = traits.second, ability2 = traits.third,
+                                    )
+                                    patchSummary = "${memberName(info, position)}：取消闪光（保持性格、性别、IV/EV）"
+                                    showSaveConfirm = true
+                                }.onFailure { partyActionMessage = "取消闪光失败：${it.message}" }
+                            }) { Text("取消闪光") }
+                        }
+                        Row {
+                            (0..1).forEach { ability ->
+                                Button(enabled = selected.size == 1, onClick = {
+                                    runCatching {
+                                        val position = selected.single()
+                                        val verifiedRom = QuickToolsProfile.verify(context, fileName)
+                                        val traits = verifiedRom.speciesTraits(info.partySpecies[position - 1])
+                                        pendingPatch = EmeraldPartyAppearancePatcher.preview(
+                                            requireNotNull(saveBytes), position, abilitySlot = ability,
+                                            genderRatio = traits.first, ability1 = traits.second, ability2 = traits.third,
+                                        )
+                                        patchSummary = "${memberName(info, position)}：切换到特性${ability + 1}"
+                                        showSaveConfirm = true
+                                    }.onFailure { partyActionMessage = "修改特性失败：${it.message}" }
+                                }) { Text("特性${ability + 1}") }
+                            }
+                        }
                         Text("队伍等级 / 性格编辑（仅操作选中的一只）")
                         OutlinedTextField(
                             value = levelEdit,
