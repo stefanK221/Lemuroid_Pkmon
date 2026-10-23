@@ -157,6 +157,17 @@ fun QuickToolsDialog(
                 Button(enabled = profile != null, onClick = { requestToggle(2, "无限大师球") }) {
                     Text(if (flags and 2 != 0) "关闭无限大师球（已开启）" else "开启无限大师球（保持99个）")
                 }
+                Button(enabled = profile != null, onClick = {
+                    confirmation = "生成神奇糖果×99到背包普通道具栏？若已有神奇糖果则数量设置为99，否则占用一个空道具格。会先备份并重启游戏，请先在游戏内正常保存。"
+                    action = {
+                        requireNotNull(profile) { "请先完成ROM校验" }
+                        val raw = onReadSave()
+                        val patched = EmeraldQuickSavePatcher.giveRareCandies(raw)
+                        backup(raw, "before_candy_")
+                        onApplySave(patched)
+                        message = "已生成神奇糖果×99，原存档已备份。"
+                    }
+                }) { Text("生成神奇糖果 ×99") }
                 if (flags and 3 != 0) TextButton(onClick = {
                     runCatching { onSetFlags(0); flags = 0; message = "已停止金钱与大师球的持续补充。" }
                         .onFailure { message = "关闭失败：${it.message}" }
