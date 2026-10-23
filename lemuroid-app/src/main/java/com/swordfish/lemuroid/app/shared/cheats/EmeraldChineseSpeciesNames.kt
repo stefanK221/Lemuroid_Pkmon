@@ -13,7 +13,7 @@ object EmeraldChineseSpeciesNames {
         252 to "比克提尼",
         253 to "藤叶蛇",
         254 to "青藤蛇",
-        255 to "君主蛇",
+        255 to "藤皇蛇",
         256 to "暖暖猪",
         257 to "炒炒猪",
         258 to "炎武王",
