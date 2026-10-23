@@ -34,6 +34,34 @@ object EmeraldQuickSavePatcher {
         }
         return Resources(money, balls, empty || balls > 0)
     }
+
+    /** Give 99 Rare Candies (item 0x44) in the normal-items bag, without overwriting other items. */
+    fun giveRareCandies(input: ByteArray): ByteArray {
+        val offsets = sections(input)
+        val section = offsets[1]
+        val key = u32(input, offsets[0] + 0xAC).toInt() and 0xffff
+        var target = -1
+        for (i in 0 until 30) {
+            val at = section + 0x560 + i * 4
+            val item = u16(input, at)
+            val amount = u16(input, at + 2) xor key
+            require(item in 0..376 && (item == 0 || amount in 1..999)) {
+                "普通道具口袋结构不匹配，已停止操作"
+            }
+            if (item == 0x44) { target = at; break }
+            if (item == 0 && target == -1) target = at
+        }
+        require(target != -1) { "普通道具口袋已满，无法放入神奇糖果" }
+        val output = input.copyOf()
+        put16(output, target, 0x44)
+        put16(output, target + 2, 99 xor key)
+        var sum = 0L
+        for (i in 0 until lengths[1] step 4) sum = (sum + u32(output, section + i)) and 0xffffffffL
+        put16(output, section + 0xFF6, ((sum + (sum ushr 16)) and 65535).toInt())
+        EmeraldSaveInspector.inspect(output)
+        return output
+    }
+
     private val permutations = buildList<List<Int>> {
         fun permute(prefix: List<Int>, rest: List<Int>) {
             if (rest.isEmpty()) add(prefix) else rest.forEach { permute(prefix + it, rest - it) }
