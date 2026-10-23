@@ -221,6 +221,7 @@ fun EmeraldSaveEditDialog(fileName: String, onDismiss: () -> Unit, onReadLiveSav
                         val parsed = EmeraldSaveInspector.inspect(raw)
                         saveBytes = raw
                         inspection = parsed
+                        loadSpeciesNames(parsed)
                         selected = if (parsed.partyCount > 0) setOf(1) else emptySet()
                         individualEdits = emptyMap()
                         liveSource = true
@@ -374,7 +375,7 @@ fun EmeraldSaveEditDialog(fileName: String, onDismiss: () -> Unit, onReadLiveSav
                                 message = "已记录${memberName(info, position)}的设置；可以选择下一只。"
                             }.onFailure { message = "设置无效：${it.message}" }
                         }) { Text("记录这只的设置") }
-                        Text("已记录：${individualEdits.keys.sorted().joinToString(", ").ifBlank { "无" }}")
+                        Text("已记录：${individualEdits.keys.sorted().joinToString("、") { memberName(info, it) }.ifBlank { "无" }}")
                         TextButton(onClick = { individualEdits = emptyMap() }) { Text("清空已记录设置") }
                     }
                     Text("存档序号：${info.sequence}")
