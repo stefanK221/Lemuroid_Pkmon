@@ -90,6 +90,17 @@ object QuickToolsProfile {
             rom.seek(start)
             List(6) { rom.readUnsignedByte() }
         }
+        /** Gen III 28-byte base-stat row: gender ratio at 16; two ability IDs at 22/23. */
+        fun speciesTraits(species: Int): Triple<Int, Int, Int> = RandomAccessFile(file, "r").use { rom ->
+            require(species in 1..411)
+            val table = pointer(rom, 0x1BC)
+            val location = table + species * 28L
+            require(location + 28 <= rom.length())
+            rom.seek(location + 16)
+            val gender = rom.readUnsignedByte()
+            rom.seek(location + 22)
+            Triple(gender, rom.readUnsignedByte(), rom.readUnsignedByte())
+        }
         fun tacklePp(): Int = RandomAccessFile(file, "r").use { rom ->
             // Verified from SHA-256-matched 5.0EX+BW ROM, not the header at
             // 0x1CC (which contains an out-of-ROM value 0x09900000).
