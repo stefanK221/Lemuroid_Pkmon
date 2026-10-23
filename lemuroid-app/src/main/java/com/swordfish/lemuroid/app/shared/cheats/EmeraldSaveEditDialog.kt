@@ -57,9 +57,24 @@ fun EmeraldSaveEditDialog(fileName: String, onDismiss: () -> Unit, onReadLiveSav
     var natureEdit by remember { mutableIntStateOf(0) }
     var natureMenu by remember { mutableStateOf(false) }
     var partyActionMessage by remember { mutableStateOf<String?>(null) }
+    var partyDisplayNames by remember { mutableStateOf<Map<Int, String>>(emptyMap()) }
     // Gen III EV order: HP, Attack, Defense, Speed, Sp. Attack, Sp. Defense.
     var liveSource by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf("选择128KB的游戏内存档 .sav；先备份原件。") }
+    fun loadSpeciesNames(info: EmeraldSaveInspector.Inspection) {
+        partyDisplayNames = runCatching {
+            val rom = QuickToolsProfile.verify(context, fileName)
+            val decoded = EmeraldChineseSpeciesNames.decoded(rom::speciesName)
+            info.partySpecies.associateWith { id ->
+                decoded[id] ?: QuickToolsProfile.namedSpecies[id] ?: rom.readableSpeciesName(id) ?: "物种#$id"
+            }
+        }.getOrDefault(emptyMap())
+    }
+    fun memberName(info: EmeraldSaveInspector.Inspection, position: Int): String {
+        val index = position - 1
+        return partyDisplayNames[info.partySpecies[index]]
+            ?: info.partyNames[index].ifBlank { "物种#${info.partySpecies[index]}" }
+    }
     val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri: Uri? ->
         if (uri != null) {
             runCatching {
@@ -80,6 +95,7 @@ fun EmeraldSaveEditDialog(fileName: String, onDismiss: () -> Unit, onReadLiveSav
                 liveSource = false
                 saveBytes = raw
                 inspection = parsed
+                loadSpeciesNames(parsed)
                 selected = if (parsed.partyCount > 0) setOf(1) else emptySet()
                 individualEdits = emptyMap()
                 message = "已验证存档，队伍共有${parsed.partyCount}只。默认只选中第一只，其他成员需手动勾选。"
@@ -355,7 +371,7 @@ fun EmeraldSaveEditDialog(fileName: String, onDismiss: () -> Unit, onReadLiveSav
                             runCatching {
                                 val position = selected.single()
                                 individualEdits = individualEdits + (position to (ivValues() to evValues()))
-                                message = "已记录队伍第${position}只的设置；可以选择下一只。"
+                                message = "已记录${memberName(info, position)}的设置；可以选择下一只。"
                             }.onFailure { message = "设置无效：${it.message}" }
                         }) { Text("记录这只的设置") }
                         Text("已记录：${individualEdits.keys.sorted().joinToString(", ").ifBlank { "无" }}")
@@ -384,11 +400,20 @@ fun EmeraldSaveEditDialog(fileName: String, onDismiss: () -> Unit, onReadLiveSav
                                 },
                             )
                             Column {
-                                Text("队伍第${position}只 · ${info.partyNames[position - 1].ifBlank { "宝可梦" }} · Lv.${info.partyLevels[position - 1]}")
+                                Text("${memberName(info, position)} · Lv.${info.partyLevels[position - 1]}")
                                 Text("IV：${info.partyIvs[position - 1].joinToString("/")}")
                                 Text("EV：${info.partyEvs[position - 1].joinToString("/")}")
                             }
                         }
+                    }
+                    if (liveSource) {
+                        Button(onClick = {
+                            runCatching {
+                                pendingPatch = EmeraldQuickSavePatcher.giveRareCandies(requireNotNull(saveBytes))
+                                patchSummary = "普通道具口袋：神奇糖果 ×99（已有糖果则设置为99，不覆盖其他道具）"
+                                showSaveConfirm = true
+                            }.onFailure { message = "神奇糖果生成失败：${it.message}" }
+                        }) { Text("生成神奇糖果 ×99（备份并重启）") }
                     }
                     if (liveSource) {
                         Text("队伍等级 / 性格编辑（仅操作选中的一只）")
@@ -414,7 +439,7 @@ fun EmeraldSaveEditDialog(fileName: String, onDismiss: () -> Unit, onReadLiveSav
                                 }
                             }
                         }
-                        Text(if (selected.size == 1) "当前选中：第${selected.single()}只" else "请仅勾选一只精灵")
+                        Text(if (selected.size == 1) "当前选中：${memberName(info, selected.single())}" else "请仅勾选一只精灵")
                         partyActionMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                         Button(enabled = selected.size == 1, onClick = {
                             runCatching {
