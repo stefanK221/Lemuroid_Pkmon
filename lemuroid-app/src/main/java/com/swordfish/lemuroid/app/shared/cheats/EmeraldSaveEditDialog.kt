@@ -13,10 +13,17 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
@@ -58,6 +65,8 @@ fun EmeraldSaveEditDialog(fileName: String, onDismiss: () -> Unit, onReadLiveSav
     var natureMenu by remember { mutableStateOf(false) }
     var partyActionMessage by remember { mutableStateOf<String?>(null) }
     var partyDisplayNames by remember { mutableStateOf<Map<Int, String>>(emptyMap()) }
+    var showAdvancedStats by remember { mutableStateOf(false) }
+    var selectedTraits by remember { mutableStateOf<Triple<Int, Int, Int>?>(null) }
     // Gen III EV order: HP, Attack, Defense, Speed, Sp. Attack, Sp. Defense.
     var liveSource by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf("选择128KB的游戏内存档 .sav；先备份原件。") }
@@ -379,8 +388,10 @@ fun EmeraldSaveEditDialog(fileName: String, onDismiss: () -> Unit, onReadLiveSav
                         TextButton(onClick = { individualEdits = emptyMap() }) { Text("清空已记录设置") }
                     }
                     Text("存档序号：${info.sequence}")
+                    Text("选择要编辑的精灵", style = MaterialTheme.typography.titleMedium)
                     (1..info.partyCount).forEach { position ->
-                        Row(modifier = Modifier.padding(vertical = 2.dp)) {
+                        Card(modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
+                        Row(modifier = Modifier.padding(8.dp).fillMaxWidth()) {
                             Checkbox(
                                 checked = position in selected,
                                 onCheckedChange = { enabled ->
@@ -401,13 +412,21 @@ fun EmeraldSaveEditDialog(fileName: String, onDismiss: () -> Unit, onReadLiveSav
                                 },
                             )
                             Column {
-                                Text("${memberName(info, position)} · Lv.${info.partyLevels[position - 1]}")
-                                Text("IV：${info.partyIvs[position - 1].joinToString("/")}")
-                                Text("EV：${info.partyEvs[position - 1].joinToString("/")}")
+                                Text("${memberName(info, position)} · Lv.${info.partyLevels[position - 1]}", style = MaterialTheme.typography.titleSmall)
+                                if (showAdvancedStats) {
+                                    Text("IV：${info.partyIvs[position - 1].joinToString("/")}")
+                                    Text("EV：${info.partyEvs[position - 1].joinToString("/")}")
+                                }
                             }
                         }
+                        }
                     }
+                    TextButton(onClick = { showAdvancedStats = !showAdvancedStats }) {
+                        Text(if (showAdvancedStats) "收起详细数值" else "展开IV/EV详细数值")
+                    }
+                    HorizontalDivider()
                     if (liveSource) {
+                        Text("道具生成", style = MaterialTheme.typography.titleMedium)
                         Button(onClick = {
                             runCatching {
                                 pendingPatch = EmeraldQuickSavePatcher.giveRareCandies(requireNotNull(saveBytes))
@@ -417,7 +436,8 @@ fun EmeraldSaveEditDialog(fileName: String, onDismiss: () -> Unit, onReadLiveSav
                         }) { Text("生成神奇糖果 ×99（备份并重启）") }
                     }
                     if (liveSource) {
-                        Text("队内精灵：闪光与特性（每次仅修改选中的一只）")
+                        Text("特殊属性 · 闪光 / 特性", style = MaterialTheme.typography.titleMedium)
+                        Text("仅修改当前选中的精灵，其他队员不变。", style = MaterialTheme.typography.bodySmall)
                         Row {
                             Button(enabled = selected.size == 1, onClick = {
                                 runCatching {
@@ -463,7 +483,8 @@ fun EmeraldSaveEditDialog(fileName: String, onDismiss: () -> Unit, onReadLiveSav
                                 }) { Text("特性${ability + 1}") }
                             }
                         }
-                        Text("队伍等级 / 性格编辑（仅操作选中的一只）")
+                        HorizontalDivider()
+                        Text("基础属性 · 等级 / 性格", style = MaterialTheme.typography.titleMedium)
                         OutlinedTextField(
                             value = levelEdit,
                             onValueChange = { levelEdit = it },
