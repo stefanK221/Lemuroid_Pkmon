@@ -75,7 +75,7 @@ fun EmeraldSaveEditDialog(fileName: String, onDismiss: () -> Unit, onReadLiveSav
             val rom = QuickToolsProfile.verify(context, fileName)
             val decoded = EmeraldChineseSpeciesNames.decoded(rom::speciesName)
             info.partySpecies.associateWith { id ->
-                decoded[id] ?: QuickToolsProfile.namedSpecies[id] ?: rom.readableSpeciesName(id) ?: "物种#$id"
+                decoded[id] ?: EmeraldChineseSpeciesNames.knownName(id) ?: rom.readableSpeciesName(id) ?: "物种#$id"
             }
         }.getOrDefault(emptyMap())
     }
@@ -425,16 +425,6 @@ fun EmeraldSaveEditDialog(fileName: String, onDismiss: () -> Unit, onReadLiveSav
                         Text(if (showAdvancedStats) "收起详细数值" else "展开IV/EV详细数值")
                     }
                     HorizontalDivider()
-                    if (liveSource) {
-                        Text("道具生成", style = MaterialTheme.typography.titleMedium)
-                        Button(onClick = {
-                            runCatching {
-                                pendingPatch = EmeraldQuickSavePatcher.giveRareCandies(requireNotNull(saveBytes))
-                                patchSummary = "普通道具口袋：神奇糖果 ×99（已有糖果则设置为99，不覆盖其他道具）"
-                                showSaveConfirm = true
-                            }.onFailure { message = "神奇糖果生成失败：${it.message}" }
-                        }) { Text("生成神奇糖果 ×99（备份并重启）") }
-                    }
                     if (liveSource) {
                         Text("特殊属性 · 闪光 / 特性", style = MaterialTheme.typography.titleMedium)
                         Text("仅修改当前选中的精灵，其他队员不变。", style = MaterialTheme.typography.bodySmall)
