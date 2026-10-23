@@ -37,6 +37,14 @@ object EmeraldChineseSpeciesNames {
         276 to "盖诺赛克特",
     )
 
+    /** Verified-ROM fallback; never use for an unverified ROM. */
+    fun knownName(species: Int): String? = when (species) {
+        in 1..251 -> knownFirst251[species - 1]
+        in 252..276 -> glyphNames.firstOrNull { it.first == species }?.second
+        in 277..411 -> knownHoenn[species - 277]
+        else -> null
+    }
+
     fun decoded(romName: (Int) -> ByteArray): Map<Int, String> {
         val codeToCharacter = mutableMapOf<Int, Char>()
         val conflicts = mutableSetOf<Int>()
