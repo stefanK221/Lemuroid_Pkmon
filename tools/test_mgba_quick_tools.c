@@ -43,10 +43,24 @@ int main(void) {
     assert(gbaPlusQuickCommand("GBA_PLUS_QUICK_V1:7")); assert(gbaPlusQuickFlags==7);
 	gbaPlusQuickReset(); write32(&c,b1+0x490,100^key); writes=0; gbaPlusQuickFrame(&c);
 	assert(writes==0 && (read32(&c,b1+0x490)^key)==100);
+	/* A full pocket blocks only ball creation, not legitimate money refill. */
 	for(unsigned i=0;i<16;++i) { write16(&c,b1+0x650+i*4,4); write16(&c,b1+0x652+i*4,1^(key&65535)); }
 	gbaPlusQuickCommand("GBA_PLUS_QUICK_V1:2"); writes=0; gbaPlusQuickFrame(&c); assert(writes==0);
-	gbaPlusQuickCommand("GBA_PLUS_QUICK_V1:3"); write16(&c,b1+0x650,999); writes=0; gbaPlusQuickFrame(&c); assert(writes==0);
-	write16(&c,b1+0x650,4); write32(&c,0x03005D8C,0x0203FF00); writes=0; gbaPlusQuickFrame(&c); assert(writes==0);
-	puts("PASS: encrypted money and balls refill, disable, occupied/full pockets, invalid layouts and pointer bounds");
+	/* Unrelated party-count memory must not control money/ball resource actions. */
+	write8(&c,0x020244E9,0);
+	gbaPlusQuickCommand("GBA_PLUS_QUICK_V1:3");
+	write32(&c,b1+0x490,5^key);
+	write16(&c,b1+0x650,999);
+	writes=0; gbaPlusQuickFrame(&c);
+	assert((read32(&c,b1+0x490)^key)==999999 && read16(&c,b1+0x650)==999);
+	/* An invalid wallet must not block a valid ball-pocket action. */
+	write16(&c,b1+0x650,4);
+	write32(&c,b1+0x490,0xFFFFFFFF^key);
+	write16(&c,b1+0x654,0);
+	writes=0; gbaPlusQuickFrame(&c);
+	assert((read32(&c,b1+0x490)^key)==0xFFFFFFFF);
+	assert(read16(&c,b1+0x654)==1 && (read16(&c,b1+0x656)^(key&65535))==99);
+	write32(&c,0x03005D8C,0x0203FF00); writes=0; gbaPlusQuickFrame(&c); assert(writes==0);
+	puts("PASS: independent money/ball refill, unrelated party memory, disable, full/corrupt pockets and pointer bounds");
 	return 0;
 }
