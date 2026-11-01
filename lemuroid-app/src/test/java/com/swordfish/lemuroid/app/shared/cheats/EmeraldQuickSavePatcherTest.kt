@@ -38,6 +38,64 @@ class EmeraldQuickSavePatcherTest {
         put16(input,p,999); checksum(input,1)
         assertThrows(IllegalArgumentException::class.java) { EmeraldQuickSavePatcher.resources(input) }
     }
+    @Test fun oneShotMoneyDoesNotDependOnBallPocketOrChangeOtherRecords() {
+        val input = fixture()
+        val ball = offset(1) + 0x650
+        put16(input, ball, 999)
+        checksum(input, 1)
+        assertEquals(12345L, EmeraldQuickSavePatcher.verifiedMoney(input))
+        val before = input.copyOf()
+        val patched = EmeraldQuickSavePatcher.fillMoney(input)
+        assertArrayEquals(before, input)
+        assertEquals(999999L, EmeraldQuickSavePatcher.verifiedMoney(patched))
+        assertEquals(999, u16(patched, ball))
+        assertEquals(64L, EmeraldSaveInspector.inspect(patched).sequence)
+        val wallet = offset(1) + 0x490
+        for (i in input.indices) {
+            if (i !in wallet until wallet + 4 && i !in offset(1) + 0xFF6..offset(1) + 0xFF7) {
+                assertEquals("Unexpected one-shot money write at $i", input[i], patched[i])
+            }
+        }
+    }
+
+    @Test fun oneShotMasterBallsUseExistingStackOrEmptySlotAndNeverOverwriteOthers() {
+        val input = fixture()
+        val first = offset(1) + 0x650
+        put16(input, first, 4)
+        put16(input, first + 2, 10 xor 0xBEEF)
+        checksum(input, 1)
+        assertTrue(EmeraldQuickSavePatcher.hasBallSpace(input))
+        val before = input.copyOf()
+        val patched = EmeraldQuickSavePatcher.giveMasterBalls(input)
+        assertArrayEquals(before, input)
+        assertEquals(4, u16(patched, first))
+        assertEquals(10, u16(patched, first + 2) xor 0xBEEF)
+        assertEquals(1, u16(patched, first + 4))
+        assertEquals(99, u16(patched, first + 6) xor 0xBEEF)
+        assertEquals(64L, EmeraldSaveInspector.inspect(patched).sequence)
+        val patchedAgain = EmeraldQuickSavePatcher.giveMasterBalls(patched)
+        assertArrayEquals(patched, patchedAgain)
+        val badMoney = input.copyOf()
+        put32(badMoney, offset(1) + 0x490, 0xFFFFFFFFL xor 0xDEADBEEFL)
+        checksum(badMoney, 1)
+        assertEquals(99, u16(EmeraldQuickSavePatcher.giveMasterBalls(badMoney), first + 6) xor 0xBEEF)
+        val full = fixture()
+        repeat(16) { i ->
+            put16(full, first + i * 4, 4)
+            put16(full, first + i * 4 + 2, 2 xor 0xBEEF)
+        }
+        checksum(full, 1)
+        assertFalse(EmeraldQuickSavePatcher.hasBallSpace(full))
+        assertThrows(IllegalArgumentException::class.java) {
+            EmeraldQuickSavePatcher.giveMasterBalls(full)
+        }
+        put16(full, first, 999)
+        checksum(full, 1)
+        assertThrows(IllegalArgumentException::class.java) {
+            EmeraldQuickSavePatcher.hasBallSpace(full)
+        }
+    }
+
     @Test fun giftPreservesAllExistingDataAndChecksumsForEveryPermutation() {
         repeat(24) { personality ->
             val input = fixture()
