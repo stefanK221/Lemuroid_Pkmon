@@ -1,4 +1,4 @@
-name: GBA Plus test APK
+name: GBA Plus dynamic-flavor CI (not a playable patched-core APK)
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  verify-and-build:
+  verify-dynamic-flavor:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -20,14 +20,11 @@ jobs:
           distribution: temurin
           java-version: '17'
           cache: gradle
-      - name: Build test APK and unit tests
+      - name: Compile dynamic flavor and run unit tests (CI only)
         run: |
           chmod +x gradlew
           ./gradlew :lemuroid-app:testFreeDynamicDebugUnitTest :lemuroid-app:assembleFreeDynamicDebug --stacktrace
-      - name: Upload test APK
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: gba-plus-test-apk
-          path: lemuroid-app/build/outputs/apk/freeDynamic/debug/*.apk
-          if-no-files-found: error
+      # Do not publish this APK: the dynamic flavor downloads an upstream
+      # mGBA core without the GBA Plus quick-command patch. Distributing it
+      # as a "test APK" makes money/master-ball buttons appear to do nothing.
+      # Only gba-plus-debug.yml bundles the rebuilt, patched mGBA core.
