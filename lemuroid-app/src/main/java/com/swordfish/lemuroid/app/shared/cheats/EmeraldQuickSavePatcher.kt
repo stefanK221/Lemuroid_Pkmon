@@ -35,6 +35,81 @@ object EmeraldQuickSavePatcher {
         return Resources(money, balls, empty || balls > 0)
     }
 
+    /** Check the wallet without depending on the contents of the ball pocket. */
+    fun verifiedMoney(input: ByteArray): Long {
+        val offsets = sections(input)
+        val key = u32(input, offsets[0] + 0xAC)
+        val money = u32(input, offsets[1] + 0x490) xor key
+        require(money <= 999999) { "金钱结构不匹配，已停止操作" }
+        return money
+    }
+
+    /** Check ball-pocket capacity independently of the wallet. */
+    fun hasBallSpace(input: ByteArray): Boolean {
+        val offsets = sections(input)
+        val section = offsets[1]
+        val key = u32(input, offsets[0] + 0xAC).toInt() and 0xFFFF
+        var available = false
+        for (i in 0 until 16) {
+            val at = section + 0x650 + i * 4
+            val item = u16(input, at)
+            val quantity = u16(input, at + 2) xor key
+            require(item in 0..12 && (item == 0 || quantity in 1..99)) {
+                "精灵球口袋结构不匹配，已停止操作"
+            }
+            if (item == 0 || item == 1) available = true
+        }
+        return available
+    }
+
+    /** One-time, checksum-preserving wallet edit; never touches the ball pocket. */
+    fun fillMoney(input: ByteArray): ByteArray {
+        verifiedMoney(input)
+        val offsets = sections(input)
+        val section = offsets[1]
+        val key = u32(input, offsets[0] + 0xAC)
+        val output = input.copyOf()
+        put32(output, section + 0x490, 999999L xor key)
+        updateSection1Checksum(output, section)
+        EmeraldSaveInspector.inspect(output)
+        return output
+    }
+
+    /** One-time grant: overwrite only an existing Master Ball stack or the first empty ball slot. */
+    fun giveMasterBalls(input: ByteArray): ByteArray {
+        val offsets = sections(input)
+        val section = offsets[1]
+        val key = u32(input, offsets[0] + 0xAC).toInt() and 0xFFFF
+        var master = -1
+        var empty = -1
+        for (i in 0 until 16) {
+            val at = section + 0x650 + i * 4
+            val item = u16(input, at)
+            val quantity = u16(input, at + 2) xor key
+            require(item in 0..12 && (item == 0 || quantity in 1..99)) {
+                "精灵球口袋结构不匹配，已停止操作"
+            }
+            if (item == 1 && master == -1) master = at
+            if (item == 0 && empty == -1) empty = at
+        }
+        val target = if (master >= 0) master else empty
+        require(target >= 0) { "精灵球口袋已满，无法生成大师球" }
+        val output = input.copyOf()
+        put16(output, target, 1)
+        put16(output, target + 2, 99 xor key)
+        updateSection1Checksum(output, section)
+        EmeraldSaveInspector.inspect(output)
+        return output
+    }
+
+    private fun updateSection1Checksum(output: ByteArray, section: Int) {
+        var sum = 0L
+        for (i in 0 until lengths[1] step 4) {
+            sum = (sum + u32(output, section + i)) and 0xFFFFFFFFL
+        }
+        put16(output, section + 0xFF6, ((sum + (sum ushr 16)) and 65535).toInt())
+    }
+
     /** Give 99 Rare Candies (item 0x44) in the normal-items bag, without overwriting other items. */
     fun giveRareCandies(input: ByteArray): ByteArray {
         val offsets = sections(input)
