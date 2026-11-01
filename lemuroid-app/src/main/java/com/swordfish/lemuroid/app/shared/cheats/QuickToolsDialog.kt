@@ -119,8 +119,13 @@ fun QuickToolsDialog(
             confirmation = "开启$title？开启期间持续补充；关闭后停止补充。会先备份最近一次游戏内 SAV。精灵球口袋满时不会覆盖其他物品。"
             action = {
                 val raw = onReadSave()
-                val resources = EmeraldQuickSavePatcher.resources(raw)
-                if (bit == 2) require(resources.hasBallSpace) { "精灵球口袋已满，请先腾出空位" }
+                if (bit == 1) {
+                    EmeraldQuickSavePatcher.verifiedMoney(raw)
+                } else if (bit == 2) {
+                    require(EmeraldQuickSavePatcher.hasBallSpace(raw)) {
+                        "精灵球口袋已满，请先腾出空位"
+                    }
+                }
                 backup(raw, "before_quick_")
                 onSetFlags(flags or bit)
                 flags = onGetFlags()
@@ -157,6 +162,29 @@ fun QuickToolsDialog(
                 Button(enabled = profile != null, onClick = { requestToggle(2, "无限大师球") }) {
                     Text(if (flags and 2 != 0) "关闭无限大师球（已开启）" else "开启无限大师球（保持99个）")
                 }
+                Text("如果持续补充未生效，可以使用下面的一次性操作。请先在游戏内正常保存；操作会备份SAV并重启游戏。")
+                Button(enabled = profile != null, onClick = {
+                    confirmation = "立即把当前SAV中的金钱设为999999？会先备份并重启游戏，未在游戏内保存的进度可能丢失。"
+                    action = {
+                        requireNotNull(profile) { "请先完成ROM校验" }
+                        val raw = onReadSave()
+                        val patched = EmeraldQuickSavePatcher.fillMoney(raw)
+                        backup(raw, "before_money_")
+                        onApplySave(patched)
+                        message = "金钱已写入999999并重新启动游戏；原SAV已备份。"
+                    }
+                }) { Text("立即补满金钱 · 999999") }
+                Button(enabled = profile != null, onClick = {
+                    confirmation = "立即生成大师球×99到精灵球口袋？已有大师球则补为99，否则使用空格；不会覆盖其他球。会先备份并重启游戏，未在游戏内保存的进度可能丢失。"
+                    action = {
+                        requireNotNull(profile) { "请先完成ROM校验" }
+                        val raw = onReadSave()
+                        val patched = EmeraldQuickSavePatcher.giveMasterBalls(raw)
+                        backup(raw, "before_ball_")
+                        onApplySave(patched)
+                        message = "大师球已写入99个并重新启动游戏；原SAV已备份。"
+                    }
+                }) { Text("立即生成大师球 ×99") }
                 Button(enabled = profile != null, onClick = {
                     confirmation = "生成神奇糖果×99到背包普通道具栏？若已有神奇糖果则数量设置为99，否则占用一个空道具格。会先备份并重启游戏，请先在游戏内正常保存。"
                     action = {
